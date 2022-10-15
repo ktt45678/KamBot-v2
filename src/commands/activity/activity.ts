@@ -119,7 +119,6 @@ export class ActivityCommand extends Command {
             .setDescription('Where to start the activity')
             .setRequired(true)
         )
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.CreateInstantInvite)
     );
   }
 

@@ -136,7 +136,7 @@ export class ActivityCommand extends Command {
     });
 
     const selectInteraction = await initialInteraction.awaitMessageComponent({
-      filter: m => m.user.id === interaction.user.id, time: 3000, componentType: ComponentType.Button,
+      filter: m => m.user.id === interaction.user.id, time: 20000, componentType: ComponentType.Button,
     }).catch(error => (this.container.client.logger.error(error)));
 
     if (!selectInteraction) {

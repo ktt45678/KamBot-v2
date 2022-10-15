@@ -10,7 +10,7 @@ export class KamBotClient extends SapphireClient {
       defaultPrefix: DEFAULT_PREFIX,
       caseInsensitiveCommands: true,
       logger: {
-        level: LogLevel.Error
+        level: LogLevel.Debug
       },
       shards: 'auto',
       allowedMentions: { parse: ['roles', 'users'], repliedUser: true },

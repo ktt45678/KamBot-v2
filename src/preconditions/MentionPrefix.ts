@@ -1,0 +1,1 @@
+export { MentionPrefixPrecondition } from './mention-prefix';

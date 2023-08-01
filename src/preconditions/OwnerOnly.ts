@@ -1,0 +1,1 @@
+export { OwnerOnlyPrecondition } from './owner-only';

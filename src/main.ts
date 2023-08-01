@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 
 import { PORT } from './config';
+import './modules/mongo';
+import './modules/redis';
 import './client';
 
 const server = express();

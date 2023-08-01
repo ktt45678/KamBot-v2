@@ -5,7 +5,8 @@ import { ChatInputCommandInteraction, Message } from 'discord.js';
 @ApplyOptions<Command.Options>({
   name: 'ping',
   aliases: ['pong'],
-  description: 'ping pong'
+  fullCategory: ['Information'],
+  description: 'Ping!'
 })
 export class PingCommand extends Command {
   public override registerApplicationCommands(registry: ApplicationCommandRegistry) {

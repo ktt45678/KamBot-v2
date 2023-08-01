@@ -1,0 +1,1 @@
+export { MusicBotPrecondition } from './music-bot';

@@ -1,11 +1,11 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Command } from '@sapphire/framework';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ChatInputCommandInteraction, ComponentType, PermissionsBitField } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ChatInputCommandInteraction, ComponentType } from 'discord.js';
 import { chunk } from 'lodash';
 
 @ApplyOptions<Command.Options>({
   name: 'activity',
-  aliases: [],
+  fullCategory: ['Activity'],
   description: 'Host an activity'
 })
 export class ActivityCommand extends Command {

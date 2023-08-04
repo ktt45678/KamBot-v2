@@ -1,14 +1,14 @@
 import { container } from '@sapphire/framework';
 import { caching } from 'cache-manager';
 import { ioRedisStore } from '@tirke/node-cache-manager-ioredis';
-import { create } from 'cache-manager-fs-stream';
+import { mongoDbStore } from '../common/utils';
 import Redis from 'ioredis';
 
-import { REDIS_URL } from '../config';
+import { DATABASE_CACHE_URL, REDIS_URL } from '../config';
 
 export async function bootstraptCacheManager() {
   container.memoryCache = await caching('memory', {
-    max: 100,
+    max: 1000,
     ttl: 100_000 // 100 seconds
   });
 
@@ -17,14 +17,19 @@ export async function bootstraptCacheManager() {
     ttl: 100_000
   });
 
-  container.diskCache = await caching(create({
-    ttl: 100_000,
-    maxsize: 262_144_000, // 250MiB
-    path: '.cache'
-  }));
+  container.mongoDbCache = await caching(mongoDbStore, {
+    url: DATABASE_CACHE_URL,
+    mongoConfig: { family: 4 },
+    max: 2000,
+    ttl: 100_000
+  });
 
   container.redisCache.store.client.on('error', (err: any) => {
     console.error('Redis error: ' + err);
+  });
+
+  container.mongoDbCache.store.client.on('error', (err: any) => {
+    console.error('MongoDB cache error: ' + err);
   });
 }
 

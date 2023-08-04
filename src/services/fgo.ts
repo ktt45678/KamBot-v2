@@ -187,7 +187,7 @@ export class FGOService {
 
   async createImage(summonedData: FGOCraftEssence | FGOServant | null) {
     const cacheKey = `${CachePrefix.SummonResultImage}:${summonedData?._id || -1}`;
-    const cachedResult = await container.diskCache.get<Buffer>(cacheKey);
+    const cachedResult = await container.mongoDbCache.get<Buffer>(cacheKey);
     if (cachedResult) return cachedResult;
     const originalWidth = FGOConfig.ImageOptions.OriginalWidth;
     const originalHeight = FGOConfig.ImageOptions.OriginalHeight;
@@ -248,7 +248,7 @@ export class FGOService {
     const scaledResultData = await sharp(result)
       .resize({ width: FGOConfig.ImageOptions.ScaledWidth, height: FGOConfig.ImageOptions.ScaledHeight })
       .png().toBuffer();
-    await container.diskCache.set(cacheKey, scaledResultData, 86_400_000);
+    await container.mongoDbCache.set(cacheKey, scaledResultData, 86_400_000);
     return scaledResultData;
   }
 
@@ -315,7 +315,7 @@ export class FGOService {
   }
 
   async downloadImageCache(url: string) {
-    return container.diskCache.wrap(`${CachePrefix.DownloadedFile}:${url}`, () => {
+    return container.mongoDbCache.wrap(`${CachePrefix.DownloadedFile}:${url}`, () => {
       return this.downloadImage(url);
     }, 86_400_000);
   }

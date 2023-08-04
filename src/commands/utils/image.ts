@@ -51,7 +51,7 @@ export class ImageCommand extends Command {
         //       { name: 'Pixel art', value: 'pixelart' }
         //     )
         // )
-        .addNumberOption(option =>
+        .addIntegerOption(option =>
           option
             .setName('images')
             .setDescription('Number of images to generate')

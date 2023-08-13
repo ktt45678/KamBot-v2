@@ -30,6 +30,19 @@ export class ImageCommand extends Command {
             .setDescription('Prompt to generate images')
             .setRequired(true)
         )
+        .addStringOption(option =>
+          option
+            .setName('model')
+            .setDescription('Image generation model')
+            .setChoices(
+              { name: 'Kandinsky 2.2', value: 'kandinsky-2.2' },
+              { name: 'Stable Diffusion XL', value: 'sdxl' },
+              { name: 'Stable Diffusion 2.1', value: 'stable-diffusion-2.1' },
+              { name: 'Stable Diffusion 1.5', value: 'stable-diffusion-1.5' },
+              { name: 'Deepfloyd-if', value: 'deepfloyd-if' },
+              { name: 'Material Diffusion', value: 'material-diffusion' }
+            )
+        )
         // .addStringOption(option =>
         //   option
         //     .setName('style')
@@ -84,11 +97,12 @@ export class ImageCommand extends Command {
 
   public async chatInputRun(interaction: ChatInputCommandInteraction) {
     const prompt = interaction.options.getString('prompt', true);
+    const model = interaction.options.getString('model') || 'sdxl';
     //const style = interaction.options.getString('style') || undefined;
     const privateResponse = interaction.options.getBoolean('private') || false;
     const totalImages = interaction.options.getInteger('images') || 5;
     await interaction.deferReply({ ephemeral: privateResponse });
-    const createImageResponse = await openAIService.createImages(prompt, totalImages);
+    const createImageResponse = await openAIService.createImages(prompt, model, totalImages);
     const files = await this.generateImageResult(createImageResponse);
     let responseContent = '> ' + prompt;
     // if (style) {

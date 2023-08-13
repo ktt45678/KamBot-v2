@@ -13,8 +13,13 @@ http.interceptors.response.use(undefined, async (err: AxiosError) => {
   if (!config.headers['x-retry']) {
     config.headers['x-retry'] = 5;
   }
+
+  const retryStatusCodes: number[] = config.headers['x-retry-status'] ?
+    config.headers['x-retry-status'].split(',').map((status: string) => Number(status)) :
+    [408, 429, 500, 502, 503, 504];
+
   // retry while Network timeout or Network Error
-  if (err.response && err.response.status && err.response.status < 500) {
+  if (err.response && err.response.status && !retryStatusCodes.includes(err.response.status)) {
     return Promise.reject(err);
   }
   config.headers['x-retry'] -= 1;

@@ -15,9 +15,11 @@ export class OpenAIService {
     this.headers.setAuthorization(`Bearer ${CHIMERA_API_KEY}`);
   }
 
-  async createImages(prompt: string, n: number = 5, size: string = '1024x1024') {
+  async createImages(prompt: string, model: string = 'sdxl', n: number = 5, size: string = '1024x1024') {
+    const headers = new AxiosHeaders(this.headers);
+    headers.set('x-retry-status', '400, 408, 429, 500, 502, 503, 504');
     const response = await http.post<ImagesResponse>(`${this.openAIUrl}/images/generations`,
-      { prompt, n, size, response_format: 'url', model: 'kandinsky' }, { headers: this.headers });
+      { prompt, n, size, response_format: 'url', model: model }, { headers: headers });
     return response.data;
   }
 

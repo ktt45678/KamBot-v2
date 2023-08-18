@@ -3,6 +3,7 @@ import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
 import { AttachmentBuilder, ChatInputCommandInteraction, Message } from 'discord.js';
 import { ImagesResponse } from 'openai';
 import path from 'path';
+import { AxiosError } from 'axios';
 
 import { http } from '../../modules';
 import { openAIService } from '../../services/openai';
@@ -35,10 +36,11 @@ export class ImageCommand extends Command {
             .setName('model')
             .setDescription('Image generation model')
             .setChoices(
-              { name: 'Kandinsky 2.2', value: 'kandinsky-2.2' },
+              //{ name: 'Midjourney', value: 'midjourney' },
               { name: 'Stable Diffusion XL', value: 'sdxl' },
               { name: 'Stable Diffusion 2.1', value: 'stable-diffusion-2.1' },
               { name: 'Stable Diffusion 1.5', value: 'stable-diffusion-1.5' },
+              { name: 'Kandinsky 2.2', value: 'kandinsky-2.2' },
               { name: 'Deepfloyd-if', value: 'deepfloyd-if' },
               { name: 'Material Diffusion', value: 'material-diffusion' }
             )
@@ -90,6 +92,13 @@ export class ImageCommand extends Command {
       const createImageResponse = await openAIService.createImages(prompt);
       const files = await this.generateImageResult(createImageResponse);
       return message.channel.send({ content: '> ' + prompt, files });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        const errorEmbedMessage = generateErrorMessage(error.response.data.detail, 'Error ' + (error.response.status || 'unknwon'));
+        return message.channel.send({ embeds: [errorEmbedMessage] });
+      } else {
+        throw error;
+      }
     } finally {
       clearInterval(sendTypingInterval);
     }
@@ -102,17 +111,26 @@ export class ImageCommand extends Command {
     const privateResponse = interaction.options.getBoolean('private') || false;
     const totalImages = interaction.options.getInteger('images') || 5;
     await interaction.deferReply({ ephemeral: privateResponse });
-    const createImageResponse = await openAIService.createImages(prompt, model, totalImages);
-    const files = await this.generateImageResult(createImageResponse);
-    let responseContent = '> ' + prompt;
-    // if (style) {
-    //   const option = <ApplicationCommandStringOption | undefined>interaction.command?.options.find(o => o.name === 'style');
-    //   if (option && option.choices) {
-    //     const choiceName = option.choices.find(c => c.value === style)?.name || style;
-    //     responseContent += `\n**Style: ${choiceName}**`;
-    //   }
-    // }
-    return interaction.followUp({ content: responseContent, files, ephemeral: privateResponse });
+    try {
+      const createImageResponse = await openAIService.createImages(prompt, model, totalImages);
+      const files = await this.generateImageResult(createImageResponse);
+      let responseContent = '> ' + prompt;
+      // if (style) {
+      //   const option = <ApplicationCommandStringOption | undefined>interaction.command?.options.find(o => o.name === 'style');
+      //   if (option && option.choices) {
+      //     const choiceName = option.choices.find(c => c.value === style)?.name || style;
+      //     responseContent += `\n**Style: ${choiceName}**`;
+      //   }
+      // }
+      return interaction.followUp({ content: responseContent, files, ephemeral: privateResponse });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        const errorEmbedMessage = generateErrorMessage(error.response.data.detail, 'Error ' + (error.response.status || 'unknwon'));
+        return interaction.followUp({ embeds: [errorEmbedMessage] });
+      } else {
+        throw error;
+      }
+    }
   }
 
   private async generateImageResult(createImageResponse: ImagesResponse): Promise<AttachmentBuilder[]> {

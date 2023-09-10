@@ -14,7 +14,7 @@ export async function bootstraptCacheManager() {
 
   container.redisCache = await caching(ioRedisStore, {
     redisInstance: new Redis(REDIS_URL),
-    ttl: 100_000
+    ttl: 100
   });
 
   container.mongoDbCache = await caching(mongoDbStore, {

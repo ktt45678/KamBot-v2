@@ -11,14 +11,14 @@ export async function findMemberInGuild(members: GuildMemberManager, name: strin
   return memberList.first() || null;
 }
 
-export function generateInfoMessage(message: string, title = 'Info!') {
+export function generateInfoMessage(message: string, title: string = 'Info!') {
   return new EmbedBuilder()
     .setColor(EmbedColors.Info)
     .setTitle(title)
     .setDescription(message);
 }
 
-export function generateErrorMessage(message: string, title = 'An error occurred!') {
+export function generateErrorMessage(message: string, title: string = 'An error occurred!') {
   return new EmbedBuilder()
     .setColor(EmbedColors.Error)
     .setTitle(title)

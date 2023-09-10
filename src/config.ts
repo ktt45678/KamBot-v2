@@ -20,3 +20,4 @@ export const CLYDE_BOT_TOKEN = process.env.CLYDE_BOT_TOKEN;
 export const CLYDE_BOT_GUILD = process.env.CLYDE_BOT_GUILD || '';
 export const CLYDE_BOT_CHANNEL = process.env.CLYDE_BOT_CHANNEL || '';
 export const CLYDE_BOT_REDACTED_WORDS = process.env.CLYDE_BOT_REDACTED_WORDS ? process.env.CLYDE_BOT_REDACTED_WORDS.replaceAll(',', '|') : null;
+export const MYFGO_CRYPTO_SECRET_KEY = process.env.MYFGO_CRYPTO_SECRET_KEY;

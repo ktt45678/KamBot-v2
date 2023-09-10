@@ -2,6 +2,7 @@ import { container, type ChatInputCommandDeniedPayload, type ContextMenuCommandD
 import { Client, DiscordAPIError, EmbedBuilder, Events, HTTPError, Interaction, RESTJSONErrorCodes, WebhookClient } from 'discord.js';
 
 import { generateErrorMessage } from './discord';
+import { DiscordEmbedError } from './discord-embed-error';
 import { WEBHOOK_LOG_URL } from '../../config';
 import { EmbedColors } from '../enums';
 
@@ -22,6 +23,12 @@ export function handleMessageCommandDenied(error: UserError, payload: MessageCom
 }
 
 export async function handleChatInputOrContextMenuCommandError(error: Error, payload: ChatInputCommandErrorPayload | ContextMenuCommandErrorPayload) {
+  if (error instanceof DiscordEmbedError) {
+    if (payload.interaction.replied || payload.interaction.deferred)
+      return payload.interaction.followUp({ embeds: [error.toEmbed()] });
+    else
+      return payload.interaction.reply({ embeds: [error.toEmbed()] });
+  }
   const errorEmbedMessage = generateErrorMessage('An unexpected error has occurred, please try again later or send a bug report', 'Error trying to execute the command!');
   const paramsString = payload.interaction.options.data.map(d => {
     const displayValue = d.value || `(${d.type})`;
@@ -40,6 +47,9 @@ export async function handleChatInputOrContextMenuCommandError(error: Error, pay
 }
 
 export async function handleMessageCommandError(error: Error, payload: MessageCommandErrorPayload) {
+  if (error instanceof DiscordEmbedError) {
+    return payload.message.channel.send({ embeds: [error.toEmbed()] });
+  }
   const errorEmbedMessage = generateErrorMessage('An unexpected error has occurred, please try again later or send a bug report', 'Error trying to execute the command!');
   await Promise.all([
     payload.message.channel.send({ embeds: [errorEmbedMessage] }),
@@ -53,6 +63,9 @@ export async function handleInteractionError(error: Error, { handler, interactio
   if (typeof error === 'string') {
     const embedErrorMessage = generateErrorMessage(error);
     return sendInteractionErrorMessage(interaction, embedErrorMessage);
+  }
+  if (error instanceof DiscordEmbedError) {
+    return sendInteractionErrorMessage(interaction, error.toEmbed());
   }
   if (error instanceof ArgumentError) {
     const embedErrorMessage = generateErrorMessage(error.message || 'Argument error');

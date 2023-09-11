@@ -41,6 +41,8 @@ export class ImageCommand extends Command {
               { name: 'Stable Diffusion 2.1', value: 'stable-diffusion-2.1' },
               { name: 'Stable Diffusion 1.5', value: 'stable-diffusion-1.5' },
               { name: 'Kandinsky 2.2', value: 'kandinsky-2.2' },
+              { name: 'Kandinsky 2', value: 'kandinsky-2' },
+              { name: 'Dall-E', value: 'dall-e' },
               { name: 'Deepfloyd-if', value: 'deepfloyd-if' },
               { name: 'Material Diffusion', value: 'material-diffusion' }
             )

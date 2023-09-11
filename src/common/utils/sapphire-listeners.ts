@@ -1,5 +1,6 @@
 import { container, type ChatInputCommandDeniedPayload, type ContextMenuCommandDeniedPayload, type MessageCommandDeniedPayload, type MessageCommandErrorPayload, UserError, type ContextMenuCommandErrorPayload, type ChatInputCommandErrorPayload, InteractionHandlerError, InteractionHandlerParseError, ArgumentError } from '@sapphire/framework';
 import { Client, DiscordAPIError, EmbedBuilder, Events, HTTPError, Interaction, RESTJSONErrorCodes, WebhookClient } from 'discord.js';
+import { ChatInputSubcommandErrorPayload, MessageSubcommandErrorPayload } from '@sapphire/plugin-subcommands';
 
 import { generateErrorMessage } from './discord';
 import { DiscordEmbedError } from './discord-embed-error';
@@ -22,7 +23,7 @@ export function handleMessageCommandDenied(error: UserError, payload: MessageCom
   return payload.message.channel.send({ embeds: [errorEmbedMessage] });
 }
 
-export async function handleChatInputOrContextMenuCommandError(error: Error, payload: ChatInputCommandErrorPayload | ContextMenuCommandErrorPayload) {
+export async function handleChatInputOrContextMenuCommandError(error: Error, payload: ChatInputCommandErrorPayload | ContextMenuCommandErrorPayload | ChatInputSubcommandErrorPayload) {
   if (error instanceof DiscordEmbedError) {
     if (payload.interaction.replied || payload.interaction.deferred)
       return payload.interaction.followUp({ embeds: [error.toEmbed()] });
@@ -46,7 +47,7 @@ export async function handleChatInputOrContextMenuCommandError(error: Error, pay
   ]);
 }
 
-export async function handleMessageCommandError(error: Error, payload: MessageCommandErrorPayload) {
+export async function handleMessageCommandError(error: Error, payload: MessageCommandErrorPayload | MessageSubcommandErrorPayload) {
   if (error instanceof DiscordEmbedError) {
     return payload.message.channel.send({ embeds: [error.toEmbed()] });
   }

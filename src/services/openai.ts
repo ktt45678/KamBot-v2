@@ -3,25 +3,27 @@ import { ImagesResponse } from 'openai';
 
 import { http } from '../modules/axios';
 import { ImageSDXLResponse } from '../common/interfaces/openai';
-import { CHIMERA_API_KEY, KALIE_API_URL } from '../config';
+import { NAGA_AI_API_KEY, KALIE_API_URL } from '../config';
 
 export class OpenAIService {
-  private openAIUrl = 'https://chimeragpt.adventblocks.cc/api/v1';
+  private openAIUrl = 'https://api.naga.ac/v1';
   private kalieAPIUrl = KALIE_API_URL;
   private headers: AxiosHeaders;
   private imageGenerationLimits: { [key: string]: number } = {
-    'midjourney': 1,
+    'midjourney': 4,
     'sdxl': 5,
-    'stable-diffusion-2.1': 5,
-    'stable-diffusion-1.5': 5,
-    'kandinsky-2.2': 5,
+    'stable-diffusion-2.1': 10,
+    'stable-diffusion-1.5': 10,
+    'kandinsky-2.2': 10,
+    'kandinsky-2': 10,
+    'dall-e': 10,
     'deepfloyd-if': 4,
-    'material-diffusion': 5
+    'material-diffusion': 8
   };
 
   constructor() {
     this.headers = new AxiosHeaders();
-    this.headers.setAuthorization(`Bearer ${CHIMERA_API_KEY}`);
+    this.headers.setAuthorization(`Bearer ${NAGA_AI_API_KEY}`);
   }
 
   async createImages(prompt: string, model: string = 'sdxl', n: number = 5, size: string = '1024x1024') {

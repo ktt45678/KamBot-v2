@@ -25,12 +25,7 @@ interface HandleAccountLoginOptions {
   description: 'Manage your Fate/Grand Order account',
   subcommands: [
     { name: 'register', messageRun: 'messageRunRegister', chatInputRun: 'chatInputRunRegister' },
-    { name: 'login', messageRun: 'messageRunLogin', chatInputRun: 'chatInputRunLogin' },
-    // {
-    //   name: 'rateup', type: 'group', entries: [
-    //     { name: 'add', chatInputRun: 'chatInputRateUpAdd' }
-    //   ]
-    // }
+    { name: 'login', messageRun: 'messageRunLogin', chatInputRun: 'chatInputRunLogin' }
   ]
 })
 export class FGOCommand extends Subcommand {

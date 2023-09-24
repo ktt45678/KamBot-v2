@@ -1,12 +1,20 @@
+import { container } from '@sapphire/framework';
+import { CronJob } from 'cron';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'node:crypto';
 
-import { FGOAccCertificate, FGOTopLoginResponse, MyFGOLoginResult } from '../common/interfaces/game';
+import { FGOTopLoginResponse, MyFGOLoginResult } from '../common/interfaces/game';
 import { aes256Decrypt, aes256Encrypt, sha1Hashsum, tripleDESDecrypt } from '../common/utils';
 import { FGOAssetData } from '../modules';
-import { MyFGOAccount } from '../models';
+import { MyFGOAccount, myFGOAccountModel } from '../models';
+import { CachePrefix } from '../common/enums';
+import { MYFGO_CRYPTO_SECRET_KEY } from '../config';
 
 export class MyFGOService {
+
+  constructor() {
+    this.initCronJobs();
+  }
 
   decryptCertificate(certificate: string) {
     const decryptedCert = tripleDESDecrypt(certificate, 'b5nHjsMrqaeNliSs3jyOzgpD', 'wuD6keVr');
@@ -114,6 +122,61 @@ export class MyFGOService {
       }
     }
     return myFgoResult;
+  }
+
+  private initCronJobs() {
+    const job = new CronJob('* * * * *', () => {
+      this.runScheduledLogin();
+    });
+
+    job.start();
+  }
+
+  private async runScheduledLogin() {
+    const accounts = await myFGOAccountModel.find({ 'settings.autoLogin': true }).exec();
+    for (let i = 0; i < accounts.length; i++) {
+      const account = accounts[i];
+      const plainAccount = account.toObject();
+      if (account.settings.autoLoginExpiry && account.settings.autoLoginExpiry <= new Date()) {
+        container.logger.info(`Login schedule has expired for account ${account.displayName} (id ${account._id}), deactivating...`);
+        account.settings.autoLogin = false;
+        account.settings.autoLoginInterval = null;
+        account.settings.autoLoginExpiry = null;
+        await account.save();
+        continue;
+      }
+      const autoLoginInterval = account.settings.autoLoginInterval || 300;
+      if (account.lastLogin && ((Date.now() - account.lastLogin.getTime()) / 1000) < autoLoginInterval)
+        continue;
+      container.logger.info(`Running scheduled login for account ${account.displayName} (id ${account._id})`);
+      const decryptedKeysCacheKey = `${CachePrefix.MyFGOAccountDecryptedKeys}:${account._id}`;
+      let decryptedAuthKey: string | null = null;
+      let decryptedSecretKey: string | null = null;
+      const decryptedKeys = await container.redisCache.get<{ authKey: string, secretKey: string }>(decryptedKeysCacheKey);
+      if (decryptedKeys) {
+        plainAccount.authKey = decryptedKeys.authKey;
+        plainAccount.secretKey = decryptedKeys.secretKey;
+        await container.redisCache.set(decryptedKeysCacheKey, decryptedKeys, 604_800);
+      } else {
+        if (account.cryptType === 2) {
+          // Cannot decrypt without user password
+          container.logger.warn(`Unable to decrypt account ${account.displayName} (User password is required)`);
+          continue;
+        }
+        const cryptKey = this.generateAccountCryptoKey(MYFGO_CRYPTO_SECRET_KEY);
+        decryptedAuthKey = this.decryptUserKey(account.authKey, [cryptKey]);
+        decryptedSecretKey = this.decryptUserKey(account.secretKey, [cryptKey]);
+        if (!decryptedAuthKey || !decryptedSecretKey)
+          continue;
+        plainAccount.authKey = decryptedAuthKey;
+        plainAccount.secretKey = decryptedSecretKey;
+        await container.redisCache.set(decryptedKeysCacheKey, { authKey: decryptedAuthKey, secretKey: decryptedSecretKey }, 604_800);
+      }
+      await this.topLogin(plainAccount);
+      container.logger.debug('Successfully logged in');
+      account.lastLogin = new Date();
+      await account.save();
+    }
   }
 
   private createBaseRequestData(fgoAssetData: FGOAssetData, account: MyFGOAccount) {

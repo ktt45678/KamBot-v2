@@ -1,13 +1,19 @@
 import { modelOptions, prop } from '@typegoose/typegoose';
 
-@modelOptions({ schemaOptions: { _id: true } })
+@modelOptions({ schemaOptions: { _id: false } })
 export class MyFGOAccountSettings {
   @prop()
-  autoDaily?: boolean;
+  autoLogin?: boolean;
 
   @prop()
-  autoDailyActions?: number;
+  autoLoginActions?: number;
 
   @prop()
   loginActions?: number;
+
+  @prop()
+  autoLoginInterval?: number | null;
+
+  @prop()
+  autoLoginExpiry?: Date | null;
 }

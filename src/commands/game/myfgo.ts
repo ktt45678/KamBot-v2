@@ -2,6 +2,8 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args } from '@sapphire/framework';
 import { Subcommand } from '@sapphire/plugin-subcommands';
 import { ActionRowBuilder, ApplicationCommandOptionChoiceData, AutocompleteInteraction, ButtonBuilder, ButtonStyle, CacheType, ChatInputCommandInteraction, ComponentType, EmbedBuilder, InteractionResponse, Message, ModalActionRowComponentBuilder, ModalBuilder, ModalSubmitInteraction, TextInputBuilder, TextInputStyle, User } from 'discord.js';
+import { FilterQuery } from 'mongoose';
+import { DateTime } from 'luxon';
 
 import { FGOAccCertificate, MyFGOLoginResult } from '../../common/interfaces/game';
 import { myFGOService } from '../../services/myfgo';
@@ -9,7 +11,6 @@ import { CachePrefix, EmbedColors } from '../../common/enums';
 import { MyFGOAccount, myFGOAccountModel } from '../../models';
 import { DiscordEmbedError, comparePassword, escapeRegExp, generateErrorMessage, hashPassword } from '../../common/utils';
 import { MYFGO_CRYPTO_SECRET_KEY } from '../../config';
-import { FilterQuery } from 'mongoose';
 
 interface HandleAccountLoginOptions {
   _id?: string;
@@ -25,7 +26,21 @@ interface HandleAccountLoginOptions {
   description: 'Manage your Fate/Grand Order account',
   subcommands: [
     { name: 'register', messageRun: 'messageRunRegister', chatInputRun: 'chatInputRunRegister' },
-    { name: 'login', messageRun: 'messageRunLogin', chatInputRun: 'chatInputRunLogin' }
+    { name: 'login', messageRun: 'messageRunLogin', chatInputRun: 'chatInputRunLogin' },
+    {
+      name: 'autologin', type: 'group', entries: [
+        { name: 'start', chatInputRun: 'chatInputAutoLoginStart' },
+        { name: 'stop', chatInputRun: 'chatInputAutoLoginStop' }
+      ]
+    },
+    /*
+    {
+      name: 'settings', type: 'group', entries: [
+        { name: 'set', chatInputRun: 'chatInputSettingsSet' },
+        { name: 'reset', chatInputRun: 'chatInputSettingsReset' }
+      ]
+    }
+    */
   ]
 })
 export class FGOCommand extends Subcommand {
@@ -51,6 +66,106 @@ export class FGOCommand extends Subcommand {
                 .setRequired(true)
             )
         )
+        .addSubcommandGroup(command =>
+          command
+            .setName('autologin')
+            .setDescription('Auto login commands')
+            .addSubcommand(command =>
+              command
+                .setName('start')
+                .setDescription('Run scheduled login')
+                .addStringOption(option =>
+                  option
+                    .setName('account')
+                    .setDescription('Select your account')
+                    .setAutocomplete(true)
+                    .setRequired(true)
+                )
+                .addNumberOption(option =>
+                  option
+                    .setName('every')
+                    .setDescription('Time delay until next login')
+                    .setMinValue(60)
+                    .setMaxValue(2592000)
+                    .setChoices(
+                      { name: '5 minutes', value: 300 },
+                      { name: '10 minutes', value: 600 },
+                      { name: '15 minutes', value: 900 },
+                      { name: '30 minutes', value: 1800 },
+                      { name: '1 hour', value: 3600 },
+                      { name: '6 hours', value: 21600 },
+                      { name: '12 hours', value: 43200 },
+                      { name: '18 hours', value: 64800 },
+                      { name: '1 day', value: 86400 }
+                    )
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(command =>
+              command
+                .setName('stop')
+                .setDescription('Stop scheduled login')
+                .addStringOption(option =>
+                  option
+                    .setName('account')
+                    .setDescription('Select your account')
+                    .setAutocomplete(true)
+                    .setRequired(true)
+                )
+                .addNumberOption(option =>
+                  option
+                    .setName('delay')
+                    .setDescription('Stop auto-login after this period')
+                    .setMinValue(300)
+                    .setMaxValue(2592000)
+                    .setChoices(
+                      { name: '5 minutes', value: 300 },
+                      { name: '10 minutes', value: 600 },
+                      { name: '15 minutes', value: 900 },
+                      { name: '30 minutes', value: 1800 },
+                      { name: '1 hour', value: 3600 },
+                      { name: '6 hours', value: 21600 },
+                      { name: '12 hours', value: 43200 },
+                      { name: '18 hours', value: 64800 },
+                      { name: '1 day', value: 86400 },
+                      { name: '3 days', value: 259200 },
+                      { name: '5 days', value: 432000 },
+                      { name: '7 days', value: 604800 }
+                    )
+                )
+            )
+        )
+      /*
+        .addSubcommandGroup(command =>
+          command
+            .setName('settings')
+            .setDescription('Account settings')
+            .addSubcommand(command =>
+              command
+                .setName('set')
+                .setDescription('Change a setting')
+                .addStringOption(option =>
+                  option
+                    .setName('name')
+                    .setDescription('Setting name')
+                    .setChoices({ name: 'Schedule login times', value: 'scheduleLoginTimes' })
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(command =>
+              command
+                .setName('reset')
+                .setDescription('Reset a setting')
+                .addStringOption(option =>
+                  option
+                    .setName('name')
+                    .setDescription('Setting name')
+                    .setChoices({ name: 'Schedule login times', value: 'scheduleLoginTimes' })
+                    .setRequired(true)
+                )
+            )
+        )
+      */
     );
   }
 
@@ -138,13 +253,67 @@ export class FGOCommand extends Subcommand {
     return interaction.followUp({ embeds: [embed] });
   }
 
+  async chatInputAutoLoginStart(interaction: ChatInputCommandInteraction) {
+    const accountId = interaction.options.getString('account', true);
+    const timeBetweenLogins = interaction.options.getNumber('every', true);
+    await interaction.deferReply();
+    const account = await myFGOAccountModel.findOne({ _id: accountId, ownerId: interaction.user.id }).exec();
+    if (!account)
+      throw new DiscordEmbedError('Account not found');
+    // Check password login
+    if (account.cryptType === 2) {
+      const cacheKey = `${CachePrefix.MyFGOAccountDecryptedKeys}:${account._id}`;
+      const decryptedKeys = await this.container.redisCache.get<{ authKey: string, secretKey: string }>(cacheKey);
+      if (!decryptedKeys) {
+        throw new DiscordEmbedError('A password for this account is required, please login manually first');
+      }
+      await this.container.redisCache.set(cacheKey, decryptedKeys, 604_800);
+    }
+    account.settings.autoLogin = true;
+    account.settings.autoLoginInterval = timeBetweenLogins;
+    await account.save();
+    const embed = this.generateAutoLoginStartSuccess(interaction.user, account);
+    return interaction.followUp({ embeds: [embed] });
+  }
+
+  async chatInputAutoLoginStop(interaction: ChatInputCommandInteraction) {
+    const accountId = interaction.options.getString('account', true);
+    const timeDelay = interaction.options.getNumber('delay', false);
+    await interaction.deferReply();
+    const account = await myFGOAccountModel.findOne({ _id: accountId, ownerId: interaction.user.id }).exec();
+    if (!account)
+      throw new DiscordEmbedError('Account not found');
+    if (!timeDelay) {
+      account.settings.autoLogin = false;
+      account.settings.autoLoginInterval = null;
+    } else {
+      account.settings.autoLoginExpiry = DateTime.now().plus({ seconds: timeDelay }).toJSDate();
+    }
+    await account.save();
+    const embed = this.generateAutoLoginStopSuccess(interaction.user, account);
+    return interaction.followUp({ embeds: [embed] });
+  }
+
+  chatInputSettingsSet(interaction: ChatInputCommandInteraction) {
+
+  }
+
+  chatInputSettingsReset(interaction: ChatInputCommandInteraction) {
+
+  }
+
   public override async autocompleteRun(interaction: AutocompleteInteraction) {
     const subcommand = interaction.options.getSubcommand();
+    const subcommandGroup = interaction.options.getSubcommandGroup();
+    let choices: ApplicationCommandOptionChoiceData<string | number>[] = [];
     if (subcommand === 'login') {
-      const choices = await this.findAutoCompleteLoginResult(interaction);
-      return interaction.respond(choices);
+      choices = await this.findAutoCompleteLoginResult(interaction);
+    } else if (subcommandGroup === 'autologin') {
+      if (subcommand === 'start' || subcommand === 'stop') {
+        choices = await this.findAutoCompleteLoginResult(interaction);
+      }
     }
-    return interaction.respond([]);
+    return interaction.respond(choices);
   }
 
   private async findAutoCompleteLoginResult(interaction: AutocompleteInteraction) {
@@ -186,16 +355,17 @@ export class FGOCommand extends Subcommand {
       const accounts = await myFGOAccountModel.find(filters).lean().exec();
       // TODO: Later
     }
-    const account = await myFGOAccountModel.findOne({ _id: options._id, ownerId: user.id }).lean().exec();
+    const account = await myFGOAccountModel.findOne({ _id: options._id, ownerId: user.id }).exec();
     if (!account)
       throw new DiscordEmbedError('Account not found');
+    const plainAccount = account.toObject();
     const cacheKey = `${CachePrefix.MyFGOAccountDecryptedKeys}:${account._id}`;
     let decryptedAuthKey: string | null = null;
     let decryptedSecretKey: string | null = null;
     const decryptedKeys = await this.container.redisCache.get<{ authKey: string, secretKey: string }>(cacheKey);
     if (decryptedKeys) {
-      account.authKey = decryptedKeys.authKey;
-      account.secretKey = decryptedKeys.secretKey;
+      plainAccount.authKey = decryptedKeys.authKey;
+      plainAccount.secretKey = decryptedKeys.secretKey;
       await this.container.redisCache.set(cacheKey, decryptedKeys, 604_800);
       if (options.deferReplyInteraction) {
         // Defer reply if loading keys from cache
@@ -219,15 +389,17 @@ export class FGOCommand extends Subcommand {
       }
       const cryptKey = myFGOService.generateAccountCryptoKey(MYFGO_CRYPTO_SECRET_KEY);
       const secondCryptKey = myFGOService.generateAccountCryptoKey(userPassword);
-      decryptedAuthKey = myFGOService.decryptUserKey(account.authKey, [cryptKey, secondCryptKey]);
-      decryptedSecretKey = myFGOService.decryptUserKey(account.secretKey, [cryptKey, secondCryptKey]);
+      decryptedAuthKey = myFGOService.decryptUserKey(plainAccount.authKey, [cryptKey, secondCryptKey]);
+      decryptedSecretKey = myFGOService.decryptUserKey(plainAccount.secretKey, [cryptKey, secondCryptKey]);
       if (!decryptedAuthKey || !decryptedSecretKey)
         throw new DiscordEmbedError('Failed to decrypt user certificate');
-      account.authKey = decryptedAuthKey;
-      account.secretKey = decryptedSecretKey;
+      plainAccount.authKey = decryptedAuthKey;
+      plainAccount.secretKey = decryptedSecretKey;
       await this.container.redisCache.set(cacheKey, { authKey: decryptedAuthKey, secretKey: decryptedSecretKey }, 604_800);
     }
-    const loginResult = await myFGOService.topLogin(account);
+    const loginResult = await myFGOService.topLogin(plainAccount);
+    account.lastLogin = new Date();
+    await account.save();
     const embed = this.generateLoginSuccess(user, loginResult, account.region);
     return embed;
   }
@@ -326,9 +498,9 @@ export class FGOCommand extends Subcommand {
       .setTitle(`Fate/Grand Order [${account.region.toUpperCase()}]`)
       .setDescription('Account has been successfully registered')
       .addFields(
-        { name: 'ID', value: account._id.toString(), inline: true },
-        { name: 'Display name', value: account.displayName, inline: true },
-        { name: 'Region', value: account.region.toUpperCase(), inline: true }
+        { name: 'ID', value: account._id.toString(), inline: false },
+        { name: 'Display name', value: account.displayName, inline: false },
+        { name: 'Region', value: account.region.toUpperCase(), inline: false }
       )
       .setFooter({ text: 'Use login command to log in to this account' });
   }
@@ -337,7 +509,7 @@ export class FGOCommand extends Subcommand {
     return new EmbedBuilder()
       .setColor(EmbedColors.Info)
       .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ forceStatic: true, size: 128 }) })
-      .setTitle(`Fate/Grand Order - ${region.toUpperCase()}`)
+      .setTitle(`Fate/Grand Order [${region.toUpperCase()}]`)
       .setDescription('Successfully logged in to FGO server')
       .addFields(
         { name: 'Level', value: loginResult.level.toString(), inline: true },
@@ -350,5 +522,31 @@ export class FGOCommand extends Subcommand {
         { name: 'AP', value: `${loginResult.currentAp}/${loginResult.apMax}`, inline: true }
       )
       .setThumbnail('https://grandorder.wiki/images/thumb/3/3d/Icon_Item_Saint_Quartz.png/200px-Icon_Item_Saint_Quartz.png');
+  }
+
+  private generateAutoLoginStartSuccess(user: User, account: MyFGOAccount) {
+    return new EmbedBuilder()
+      .setColor(EmbedColors.Info)
+      .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ forceStatic: true, size: 128 }) })
+      .setTitle(`Fate/Grand Order [${account.region.toUpperCase()}]`)
+      .setDescription('Scheduled login has been enabled for this account')
+      .addFields(
+        { name: 'ID', value: account._id.toString(), inline: false },
+        { name: 'Display name', value: account.displayName, inline: false },
+        { name: 'Region', value: account.region.toUpperCase(), inline: false }
+      );
+  }
+
+  private generateAutoLoginStopSuccess(user: User, account: MyFGOAccount) {
+    return new EmbedBuilder()
+      .setColor(EmbedColors.Info)
+      .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ forceStatic: true, size: 128 }) })
+      .setTitle(`Fate/Grand Order [${account.region.toUpperCase()}]`)
+      .setDescription('Scheduled login has been disabled for this account')
+      .addFields(
+        { name: 'ID', value: account._id.toString(), inline: false },
+        { name: 'Display name', value: account.displayName, inline: false },
+        { name: 'Region', value: account.region.toUpperCase(), inline: false }
+      );
   }
 }

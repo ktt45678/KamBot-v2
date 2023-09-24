@@ -36,6 +36,9 @@ export class MyFGOAccount {
 
   @prop({ _id: false, default: () => ({}) })
   settings!: MyFGOAccountSettings;
+
+  @prop()
+  lastLogin?: Date;
 }
 
 export const myFGOAccountModel = getModelForClass(MyFGOAccount, { options: { customName: 'myfgo_account' } });

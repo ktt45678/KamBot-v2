@@ -11,9 +11,9 @@ export class MyFGOAccountSettings {
   @prop()
   loginActions?: number;
 
-  @prop()
+  @prop({ type: Number })
   autoLoginInterval?: number | null;
 
-  @prop()
+  @prop({ type: Date })
   autoLoginExpiry?: Date | null;
 }

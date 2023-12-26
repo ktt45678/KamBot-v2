@@ -398,6 +398,11 @@ export class FGOCommand extends Subcommand {
       await this.container.redisCache.set(cacheKey, { authKey: decryptedAuthKey, secretKey: decryptedSecretKey }, 604_800);
     }
     const loginResult = await myFGOService.topLogin(plainAccount);
+    // try {
+    //   await myFGOService.profileData(plainAccount);
+    // } catch (e) {
+    //   console.log(e);
+    // }
     account.lastLogin = new Date();
     await account.save();
     const embed = this.generateLoginSuccess(user, loginResult, account.region);

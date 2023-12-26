@@ -25,7 +25,7 @@ export function generateErrorMessage(message: string, title: string = 'An error 
     .setDescription(message);
 }
 
-export async function createSendTypingInterval(channel: TextBasedChannel) {
+export async function createSendTypingInterval(channel: TextBasedChannel): Promise<NodeJS.Timer> {
   await channel.sendTyping();
   return setInterval(() => {
     return channel.sendTyping();

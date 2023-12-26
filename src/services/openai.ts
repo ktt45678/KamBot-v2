@@ -1,5 +1,5 @@
 import { AxiosHeaders } from 'axios';
-import { ImagesResponse } from 'openai';
+import { ChatCompletionRequestMessage, CreateChatCompletionResponse, ImagesResponse } from 'openai';
 
 import { http } from '../modules/axios';
 import { ImageSDXLResponse } from '../common/interfaces/openai';
@@ -10,6 +10,7 @@ export class OpenAIService {
   private kalieAPIUrl = KALIE_API_URL;
   private headers: AxiosHeaders;
   private imageGenerationLimits: { [key: string]: number } = {
+    'latent-consistency-model': 10,
     'midjourney': 4,
     'sdxl': 5,
     'stable-diffusion-2.1': 10,
@@ -26,16 +27,25 @@ export class OpenAIService {
     this.headers.setAuthorization(`Bearer ${NAGA_AI_API_KEY}`);
   }
 
-  async createImages(prompt: string, model: string = 'sdxl', n: number = 5, size: string = '1024x1024') {
+  async createChatCompletion(messages: ChatCompletionRequestMessage[], model: string = 'gpt-3.5-turbo-1106') {
+    const headers = new AxiosHeaders(this.headers);
+    headers.set('x-retry-status', '400, 408, 429, 500, 502, 503, 504');
+
+    const response = await http.post<CreateChatCompletionResponse>(`${this.openAIUrl}/chat/completions`, { model, messages },
+      { headers: headers });
+    return response.data;
+  }
+
+  async createImages(prompt: string, model: string = 'sdxl', n: number = 4, size: string = '1024x1024') {
     const headers = new AxiosHeaders(this.headers);
     headers.set('x-retry-status', '400, 408, 429, 500, 502, 503, 504');
 
     const imageLimit = this.imageGenerationLimits[model] || 1;
     if (n > imageLimit)
       n = imageLimit;
-
+    console.log({ prompt, n, size, response_format: 'url', model });
     const response = await http.post<ImagesResponse>(`${this.openAIUrl}/images/generations`,
-      { prompt, n, size, response_format: 'url', model: model }, { headers: headers });
+      { prompt, n, size, response_format: 'url', model }, { headers: headers });
     return response.data;
   }
 

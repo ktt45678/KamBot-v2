@@ -111,7 +111,7 @@ export class ImageCommand extends Command {
     const model = interaction.options.getString('model') || 'sdxl';
     //const style = interaction.options.getString('style') || undefined;
     const privateResponse = interaction.options.getBoolean('private') || false;
-    const totalImages = interaction.options.getInteger('images') || 5;
+    const totalImages = interaction.options.getInteger('images') || 4;
     await interaction.deferReply({ ephemeral: privateResponse });
     try {
       const createImageResponse = await openAIService.createImages(prompt, model, totalImages);
@@ -127,9 +127,12 @@ export class ImageCommand extends Command {
       return interaction.followUp({ content: responseContent, files, ephemeral: privateResponse });
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
-        const errorEmbedMessage = generateErrorMessage(error.response.data.detail, 'Error ' + (error.response.status || 'unknwon'));
+        console.log(error.response);
+        const errorMessageContent = error.response.data.detail || error.response.data.error?.message || 'Unspecified error message';
+        const errorEmbedMessage = generateErrorMessage(errorMessageContent, 'API Error ' + (error.response.status || 'unknwon'));
         return interaction.followUp({ embeds: [errorEmbedMessage] });
       } else {
+        console.log(error);
         throw error;
       }
     }

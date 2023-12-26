@@ -1,11 +1,12 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
-import { ChannelType, ChatInputCommandInteraction, Message, MessageCollector } from 'discord.js';
+import { ChannelType, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageCollector, TextBasedChannel, User } from 'discord.js';
+import { ChatCompletionRequestMessage } from 'openai';
 
-import { clydeChannelModel } from '../../models';
-import { selfbotService } from '../../services';
+import { aiChatMessageModel, clydeChannelModel } from '../../models';
+import { openAIService, selfbotService } from '../../services';
 import { createSendTypingInterval, generateErrorMessage, splitString } from '../../common/utils';
-import { CLYDE_BOT_CHANNEL, CLYDE_BOT_GUILD, CLYDE_BOT_REDACTED_WORDS } from '../../config';
+import { AI_CHAT_SYSTEM_MESSAGE, CLYDE_BOT_CHANNEL, CLYDE_BOT_GUILD, CLYDE_BOT_REDACTED_WORDS } from '../../config';
 
 @ApplyOptions<Command.Options>({
   name: 'chat',
@@ -34,108 +35,122 @@ export class ChatCommand extends Command {
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
 
-    const guild = await message.client.guilds.fetch(CLYDE_BOT_GUILD);
-
-    const msgChannel = await guild.channels.fetch(CLYDE_BOT_CHANNEL);
-
-    if (!msgChannel) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: channel not found)');
-      return message.channel.send({ embeds: [errorEmbedMessage] });
-    }
-
-    if (msgChannel.type !== ChannelType.GuildForum) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: invalid channel)');
-      return message.channel.send({ embeds: [errorEmbedMessage] });
-    }
-
-    const savedChannel = await this.resolveChannel(message.author.id, message.author.username);
-
-    const thread = await msgChannel.threads.fetch(savedChannel.channelId);
-
-    if (!thread) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: could not find saved channel)');
-      return message.channel.send({ embeds: [errorEmbedMessage] });
-    }
-
     const sendTypingInterval = await createSendTypingInterval(message.channel);
 
     try {
       const chatContent = await args.rest('string');
-      const chatMsgRes = await this.sendChatMessage(thread.id, chatContent);
 
-      const msgCollector = new MessageCollector(thread, {
-        filter: m => m.author.id === '1081004946872352958' && (!m.reference || m.reference.messageId === chatMsgRes.data.id),
-        time: 300_000,
-        max: 1
+      const oldChatMessages = await aiChatMessageModel.find(
+        { user: message.author.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
+      ).exec();
+
+      const completionRequestMessages: ChatCompletionRequestMessage[] = [];
+
+      const systemMessageContent = this.createSystemMessage({
+        guild: message.guild,
+        member: message.member,
+        channel: message.channel,
+        user: message.author
       });
-      msgCollector.on('collect', (async collected => {
-        msgCollector.stop();
-        let messageContent = collected.content
-          .replaceAll(`<@!${chatMsgRes.data.author.id}>`, `<@!${message.author.id}>`)
-          .replace(new RegExp(chatMsgRes.data.author.username, 'i'), message.member?.nickname || message.author.username);
-        if (CLYDE_BOT_REDACTED_WORDS)
-          messageContent = messageContent.replace(new RegExp(CLYDE_BOT_REDACTED_WORDS, 'g'), '[REDACTED]');
-        if (messageContent.length <= 2000) {
-          await message.reply({ content: messageContent, allowedMentions: { repliedUser: false } });
-        } else {
-          const splitMessage = splitString(2000, messageContent);
-          for (let i = 0; i < splitMessage.length; i++) {
-            if (i === 0) {
-              await message.reply({ content: splitMessage[i], allowedMentions: { repliedUser: false } });
-            } else {
-              await message.channel.send({ content: splitMessage[i] });
-            }
+
+      completionRequestMessages.push({
+        role: 'system',
+        content: systemMessageContent
+      });
+
+      for (let i = oldChatMessages.length - 1; i >= 0; i--) {
+        completionRequestMessages.push({ role: <any>oldChatMessages[i].role, content: oldChatMessages[i].content });
+      }
+
+      const userChatMessage = new aiChatMessageModel({
+        user: message.author.id,
+        role: 'user',
+        content: chatContent
+      });
+
+      completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
+
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages);
+
+      const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
+
+      if (!messageContent) {
+        const errorEmbedMessage = generateErrorMessage('The bot did not respond');
+        return message.channel.send({ embeds: [errorEmbedMessage] });
+      }
+
+      if (messageContent.length <= 2000) {
+        await message.reply({ content: messageContent, allowedMentions: { repliedUser: false } });
+      } else {
+        const splitMessage = splitString(2000, messageContent);
+        for (let i = 0; i < splitMessage.length; i++) {
+          if (i === 0) {
+            await message.reply({ content: splitMessage[i], allowedMentions: { repliedUser: false } });
+          } else {
+            await message.channel.send({ content: splitMessage[i] });
           }
         }
-      }));
-      msgCollector.once('end', () => {
-        clearInterval(sendTypingInterval);
+      }
+
+      const repliedChatMessage = new aiChatMessageModel({
+        user: message.author.id,
+        role: 'assistant',
+        content: messageContent
       });
+
+      await userChatMessage.save();
+      await repliedChatMessage.save();
     } catch (e) {
-      clearInterval(sendTypingInterval);
       throw e;
+    } finally {
+      clearInterval(sendTypingInterval);
     }
   }
 
   public async chatInputRun(interaction: ChatInputCommandInteraction) {
-    const guild = await interaction.client.guilds.fetch(CLYDE_BOT_GUILD);
+    try {
+      const chatContent = interaction.options.getString('message', true);
+      await interaction.deferReply();
 
-    const msgChannel = await guild.channels.fetch(CLYDE_BOT_CHANNEL);
+      const oldChatMessages = await aiChatMessageModel.find(
+        { user: interaction.user.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
+      ).exec();
 
-    if (!msgChannel) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: channel not found)');
-      return interaction.reply({ embeds: [errorEmbedMessage] });
-    }
+      const completionRequestMessages: ChatCompletionRequestMessage[] = [];
 
-    if (msgChannel.type !== ChannelType.GuildForum) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: invalid channel)');
-      return interaction.reply({ embeds: [errorEmbedMessage] });
-    }
+      const systemMessageContent = this.createSystemMessage({
+        guild: interaction.guild,
+        member: <GuildMember>interaction.member!,
+        channel: interaction.channel!,
+        user: interaction.user
+      });
 
-    await interaction.deferReply();
+      completionRequestMessages.push({
+        role: 'system',
+        content: systemMessageContent
+      });
 
-    const savedChannel = await this.resolveChannel(interaction.user.id, interaction.user.username);
+      for (let i = oldChatMessages.length - 1; i >= 0; i--) {
+        completionRequestMessages.push({ role: <any>oldChatMessages[i].role, content: oldChatMessages[i].content });
+      }
 
-    const thread = await msgChannel.threads.fetch(savedChannel.channelId);
+      const userChatMessage = new aiChatMessageModel({
+        user: interaction.user.id,
+        role: 'user',
+        content: chatContent
+      });
 
-    if (!thread) {
-      const errorEmbedMessage = generateErrorMessage('Error configuring chat bot (reason: could not find saved channel)');
-      return interaction.followUp({ embeds: [errorEmbedMessage] });
-    }
+      completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
 
-    const chatContent = interaction.options.getString('message', true);
-    const chatMsgRes = await this.sendChatMessage(thread.id, chatContent);
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages);
 
-    const msgCollector = new MessageCollector(thread, {
-      filter: m => m.author.id === '1081004946872352958' && (!m.reference || m.reference.messageId === chatMsgRes.data.id),
-      time: 300_000,
-      max: 1
-    });
-    msgCollector.on('collect', (async collected => {
-      msgCollector.stop();
-      let messageContent = collected.content.replaceAll(`<@!${chatMsgRes.data.author.id}>`, `<@!${interaction.user.id}>`);
-      if (CLYDE_BOT_REDACTED_WORDS)
-        messageContent = messageContent.replace(new RegExp(CLYDE_BOT_REDACTED_WORDS, 'g'), '[REDACTED]');
+      const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
+
+      if (!messageContent) {
+        const errorEmbedMessage = generateErrorMessage('The bot did not respond');
+        return interaction.followUp({ embeds: [errorEmbedMessage] });
+      }
+
       if (messageContent.length <= 2000) {
         await interaction.followUp({ content: messageContent, allowedMentions: { repliedUser: false } });
       } else {
@@ -148,7 +163,32 @@ export class ChatCommand extends Command {
           }
         }
       }
-    }));
+
+      const repliedChatMessage = new aiChatMessageModel({
+        user: interaction.user.id,
+        role: 'assistant',
+        content: messageContent
+      });
+
+      await userChatMessage.save();
+      await repliedChatMessage.save();
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  private createSystemMessage(options: { guild: Guild | null, member: GuildMember | null, channel: TextBasedChannel, user: User }) {
+    const { guild, member, channel, user } = options;
+    let messageContent = AI_CHAT_SYSTEM_MESSAGE + '\n';
+    if (guild && member && !channel.isDMBased()) {
+      messageContent += `You are in a discord server called \`${guild.name}\`, the message channel name is \`${channel.name}\`, `;
+      messageContent += `the user chatting with you is \`${member.nickname || member.displayName}\`, his/her username is \`${user.username}\`, `;
+      messageContent += `you can use this syntax <@${user.id}> to mention/ping this user in here\n`;
+    } else if (channel.isDMBased()) {
+      messageContent += `You are in a direct message channel, the user chatting with you is \`${user.username}\`, `;
+      messageContent += `you can use this syntax <@${user.id}> to mention/ping this user in here\n`
+    }
+    return messageContent;
   }
 
   private async resolveChannel(userId: string, username: string) {

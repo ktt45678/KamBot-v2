@@ -49,7 +49,7 @@
     "openai": "3.3.0",
     "rimraf": "5.0.1",
     "sharp": "0.32.4",
-    "shoukaku": "3.4.0",
+    "shoukaku": "4.0.1",
     "uuid": "9.0.0"
   },
   "devDependencies": {

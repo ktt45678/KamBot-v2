@@ -67,8 +67,8 @@ export class KamBotClient extends SapphireClient {
     container.playerManager.on('close', (name, code, reason) => {
       this.logger.info(`Lavalink Node: ${name} closed with code ${code} - ${reason || 'No reason'}`);
     });
-    container.playerManager.on('disconnect', (name, players, moved) => {
-      this.logger.info(`Lavalink Node: ${name} disconnected - ${moved ? 'players have been moved' : 'players have been disconnected'}`);
+    container.playerManager.on('disconnect', (name, count) => {
+      this.logger.info(`Lavalink Node: ${name} disconnected - count: ${count}`);
     });
     container.queueManager = new MusicQueueManager(this);
   }

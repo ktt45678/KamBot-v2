@@ -29,9 +29,8 @@ export class ShuffleCommand extends Command {
       const errorEmbedMessage = generateErrorMessage('The player is not active');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
-    const shuffle = !queue.getShuffle();
-    queue.setShuffle(shuffle);
-    const embed = this.generatePlayerShuffleChanged(message.author, shuffle);
+    queue.shuffle();
+    const embed = this.generatePlayerShuffleChanged(message.author);
     return message.channel.send({ embeds: [embed] });
   }
 
@@ -42,14 +41,13 @@ export class ShuffleCommand extends Command {
       const errorEmbedMessage = generateErrorMessage('The player is not active');
       return interaction.reply({ embeds: [errorEmbedMessage] });
     }
-    const shuffle = !queue.getShuffle();
-    queue.setShuffle(shuffle);
-    const embed = this.generatePlayerShuffleChanged(interaction.user, shuffle);
+    queue.shuffle();
+    const embed = this.generatePlayerShuffleChanged(interaction.user);
     return interaction.reply({ embeds: [embed] });
   }
 
-  private generatePlayerShuffleChanged(user: User, shuffle: boolean) {
-    const content = shuffle ? 'Shuffle has been enabled' : 'Shuffle has been disabled';
+  private generatePlayerShuffleChanged(user: User) {
+    const content = 'Queue has been shuffled';
     return new EmbedBuilder()
       .setColor(EmbedColors.Info)
       .setAuthor({ name: 'Player updated', iconURL: user.displayAvatarURL({ forceStatic: true, size: 128 }) })

@@ -1,6 +1,5 @@
 import { container } from '@sapphire/framework';
-import { GuildMember, TextBasedChannel } from 'discord.js';
-import { Track } from 'shoukaku';
+import { TextBasedChannel } from 'discord.js';
 
 import { KamBotClient } from '../client';
 import { MusicQueue } from './music-queue';

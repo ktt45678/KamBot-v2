@@ -2,7 +2,7 @@ import { container } from '@sapphire/framework';
 
 export class MusicService {
   async loadTracks(query: string) {
-    const node = container.playerManager.getNode()!;
+    const node = container.playerManager.nodes.values().next().value;
     return node.rest.resolve(query);
     // const url = `http://${node.host}:${node.port}/loadtracks`;
     // const headers = new AxiosHeaders();

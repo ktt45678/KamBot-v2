@@ -120,24 +120,34 @@ export class PlayCommand extends Command {
   private async handleUrlSongSelection({ url, user, guildId, voiceChannelId, messageChannel,
     sendTrackNotFoundMessage, sendTrackAddedMessage, sendPlaylistAddedMessage }: HandleSongByUrlOptions) {
     const loadResult = await musicService.loadTracks(url);
-    if (!loadResult || loadResult.loadType === 'NO_MATCHES') {
+    if (!loadResult || loadResult.loadType === 'empty') {
       const errorEmbedMessage = generateErrorMessage(`Could not find the results for **${url}**`);
       return sendTrackNotFoundMessage(errorEmbedMessage);
     }
+    if (loadResult.loadType === 'error') {
+      const errorEmbedMessage = generateErrorMessage(`Error: **${loadResult.data.message}** (${loadResult.data.cause})`);
+      return sendTrackNotFoundMessage(errorEmbedMessage);
+    }
     const queue = await this.container.queueManager.resolveQueue(guildId, voiceChannelId, messageChannel);
-    if (loadResult.loadType === 'TRACK_LOADED') {
-      queue.addTrack(user.id, loadResult.tracks[0]);
+    if (loadResult.loadType === 'track') {
+      queue.addTrack(user.id, loadResult.data);
       if (!queue.hasCurrentTrack())
         queue.play();
-      const embedTrackAdded = this.generateTrackAdded(user, loadResult.tracks[0]);
+      const embedTrackAdded = this.generateTrackAdded(user, loadResult.data);
       await sendTrackAddedMessage(embedTrackAdded);
-    } else if (loadResult.loadType === 'PLAYLIST_LOADED') {
-      for (let i = 0; i < loadResult.tracks.length; i++) {
-        queue.addTrack(user.id, loadResult.tracks[i]);
+    } else if (loadResult.loadType === 'playlist') {
+      const selectedTrackIndex = loadResult.data.info.selectedTrack || 0;
+      const playlistTracks = [...loadResult.data.tracks];
+      if (selectedTrackIndex > 0) {
+        const [firstTrack] = playlistTracks.splice(selectedTrackIndex, 1);
+        playlistTracks.unshift(firstTrack);
+      }
+      for (let i = 0; i < loadResult.data.tracks.length; i++) {
+        queue.addTrack(user.id, loadResult.data.tracks[i]);
       }
       if (!queue.hasCurrentTrack())
         queue.play();
-      const embedPlaylistAdded = this.generatePlaylistAdded(user, loadResult.playlistInfo.name || 'Unknown', url, loadResult.tracks.length);
+      const embedPlaylistAdded = this.generatePlaylistAdded(user, loadResult.data.info.name || 'Unknown', url, loadResult.data.tracks.length);
       await sendPlaylistAddedMessage(embedPlaylistAdded);
     }
   }
@@ -145,23 +155,27 @@ export class PlayCommand extends Command {
   private async handleSongSelection({ trackName, user, guildId, voiceChannelId, messageChannel, sendTrackNotFoundMessage,
     sendTrackAddedMessage, runPaginatedMessage }: HandleSongSelectionOptions) {
     const searchResult = await musicService.loadTracks(`ytsearch:${trackName}`);
-    if (!searchResult || searchResult.loadType === 'NO_MATCHES') {
+    if (!searchResult || searchResult.loadType === 'empty') {
       const errorEmbedMessage = generateErrorMessage(`Could not find the results for **${trackName}**`);
       return sendTrackNotFoundMessage(errorEmbedMessage);
     }
-    const paginatedMessage = this.generateSearchResult(user, searchResult.tracks);
+    if (searchResult.loadType === 'error') {
+      const errorEmbedMessage = generateErrorMessage(`Error: **${searchResult.data.message}** (${searchResult.data.cause})`);
+      return sendTrackNotFoundMessage(errorEmbedMessage);
+    }
+    const paginatedMessage = this.generateSearchResult(user, searchResult.data);
     paginatedMessage.setEnableMessageCollector(true);
     paginatedMessage.setMessageCollectorOptions({
       filter: (collected) => {
         const songIndex = Number(collected.content);
-        return collected.author.id === user.id && songIndex >= 0 && songIndex <= searchResult.tracks.length;
+        return collected.author.id === user.id && songIndex >= 0 && songIndex <= searchResult.data.length;
       },
       run: async ({ handler, message: collected }) => {
         const songIndex = Number(collected.content);
         // Stop selecting if the index value is 0
         let selectResultText = 'Canceled by user.';
         if (songIndex >= 1) {
-          const selectedTrack = searchResult.tracks[songIndex - 1];
+          const selectedTrack = searchResult.data[songIndex - 1];
           const queue = await this.container.queueManager.resolveQueue(guildId, voiceChannelId, messageChannel);
           queue.addTrack(user.id, selectedTrack);
           const embedTrackAdded = this.generateTrackAdded(user, selectedTrack);

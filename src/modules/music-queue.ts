@@ -1,5 +1,6 @@
 import { container } from '@sapphire/framework';
 import { Player, Track } from 'shoukaku';
+import { shuffle } from 'lodash';
 
 import { KamBotClient } from '../client';
 import { EmbedBuilder, TextBasedChannel } from 'discord.js';
@@ -41,7 +42,6 @@ export class MusicQueue {
   public tracks: UserTrack[];
   public current: UserTrack | null;
   public repeat: RepeatMode;
-  public shuffle: boolean;
   public volume: number;
   public player: Player | null;
   public initialized: boolean;
@@ -56,7 +56,6 @@ export class MusicQueue {
     this.tracks = [];
     this.current = null;
     this.repeat = RepeatMode.Off;
-    this.shuffle = false;
     this.volume = 1;
     this.player = null;
     this.initialized = false;
@@ -67,16 +66,15 @@ export class MusicQueue {
   public async connect() {
     if (this.initialized)
       return;
-    const node = container.playerManager.getNode('auto')!;
     // Join channel
-    this.player = await node.joinChannel({
+    this.player = await container.playerManager.joinVoiceChannel({
       guildId: this.guildId,
       channelId: this.voiceChannelId,
       shardId: 0
     });
     // Track end event
     this.player.on('end', data => {
-      if (data.reason !== 'STOPPED' && data.reason !== 'REPLACED') {
+      if (data.reason !== 'stopped' && data.reason !== 'replaced') {
         if (this.repeat === RepeatMode.Once) {
           this.tracks.unshift(this.current!);
         }
@@ -131,11 +129,16 @@ export class MusicQueue {
       this.waitForDisconnect(MusicConfig.DisconnectTimeout);
       return;
     }
-    this.player!.playTrack({ track: this.current.trackData.track });
+    this.player!.playTrack({ track: this.current.trackData.encoded });
   }
 
   public skip() {
     this.player!.stopTrack();
+  }
+
+  public shuffle() {
+    if (!this.tracks.length) return;
+    this.tracks = shuffle(this.tracks);
   }
 
   public getPaused() {
@@ -157,7 +160,7 @@ export class MusicQueue {
   }
 
   public setVolume(volume: number) {
-    this.player!.setVolume(volume);
+    this.player!.setGlobalVolume(volume);
   }
 
   public getRepeat() {
@@ -168,20 +171,12 @@ export class MusicQueue {
     this.repeat = repeat;
   }
 
-  public getShuffle() {
-    return this.shuffle;
-  }
-
-  public setShuffle(shuffle: boolean) {
-    this.shuffle = shuffle;
-  }
-
   public async disconnect(options: DisconnectOptions = { sendEmptyQueueMessage: true }) {
     const sendMessagePromise = options.sendEmptyQueueMessage ? this.sendEmbedMessage(new EmbedBuilder()
       .setColor(EmbedColors.Info)
       .setAuthor({ name: 'Player stopped' })
       .setDescription('There is no more music in the queue')) : null;
-    const leavePromise = this.player!.connection.disconnect();
+    const leavePromise = container.playerManager.leaveVoiceChannel(this.player!.guildId);
     await Promise.all([sendMessagePromise, leavePromise]);
     this.cleanup();
   }

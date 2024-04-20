@@ -9,7 +9,7 @@ import { generateErrorMessage, generateInfoMessage, humanizeTime } from '../../c
 
 @ApplyOptions<Subcommand.Options>({
   name: 'nowplaying',
-  aliases: ['playing', 'nowplay'],
+  aliases: ['playing', 'nowplay', 'np'],
   fullCategory: ['Music'],
   description: 'Show info of the current song.',
   detailedDescription: {},

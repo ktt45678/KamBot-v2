@@ -36,15 +36,13 @@ export class ImageCommand extends Command {
             .setName('model')
             .setDescription('Image generation model')
             .setChoices(
-              //{ name: 'Midjourney', value: 'midjourney' },
+              { name: 'Midjourney', value: 'midjourney' },
               { name: 'Stable Diffusion XL', value: 'sdxl' },
-              { name: 'Stable Diffusion 2.1', value: 'stable-diffusion-2.1' },
-              { name: 'Stable Diffusion 1.5', value: 'stable-diffusion-1.5' },
+              { name: 'Dall-E 3', value: 'dall-e-3' },
+              { name: 'Playground v2.5', value: 'playground-v2.5' },
+              { name: 'Kandinsky 3', value: 'kandinsky-3' },
               { name: 'Kandinsky 2.2', value: 'kandinsky-2.2' },
-              { name: 'Kandinsky 2', value: 'kandinsky-2' },
-              { name: 'Dall-E', value: 'dall-e' },
-              { name: 'Deepfloyd-if', value: 'deepfloyd-if' },
-              { name: 'Material Diffusion', value: 'material-diffusion' }
+              { name: 'Kandinsky 2', value: 'kandinsky-2' }
             )
         )
         // .addStringOption(option =>

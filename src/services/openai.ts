@@ -10,16 +10,13 @@ export class OpenAIService {
   private kalieAPIUrl = KALIE_API_URL;
   private headers: AxiosHeaders;
   private imageGenerationLimits: { [key: string]: number } = {
-    'latent-consistency-model': 10,
     'midjourney': 4,
     'sdxl': 5,
-    'stable-diffusion-2.1': 10,
-    'stable-diffusion-1.5': 10,
+    'dall-e-3': 4,
+    'kandinsky-3': 10,
     'kandinsky-2.2': 10,
     'kandinsky-2': 10,
-    'dall-e': 10,
-    'deepfloyd-if': 4,
-    'material-diffusion': 8
+    'playground-v2.5': 5
   };
 
   constructor() {

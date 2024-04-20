@@ -1,18 +1,18 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
-import { ChannelType, ChatInputCommandInteraction, Guild, GuildMember, Message, MessageCollector, TextBasedChannel, User } from 'discord.js';
+import { ChatInputCommandInteraction, Guild, GuildMember, Message, TextBasedChannel, User } from 'discord.js';
 import { ChatCompletionRequestMessage } from 'openai';
 
 import { aiChatMessageModel, clydeChannelModel } from '../../models';
 import { openAIService, selfbotService } from '../../services';
 import { createSendTypingInterval, generateErrorMessage, splitString } from '../../common/utils';
-import { AI_CHAT_SYSTEM_MESSAGE, CLYDE_BOT_CHANNEL, CLYDE_BOT_GUILD, CLYDE_BOT_REDACTED_WORDS } from '../../config';
+import { AI_CHAT_SYSTEM_MESSAGE, CLYDE_BOT_CHANNEL } from '../../config';
 
 @ApplyOptions<Command.Options>({
   name: 'chat',
   aliases: ['gpt', 'clyde'],
   fullCategory: ['Utility'],
-  description: 'Chat using Discord\'s Clyde (GPT-3.5)'
+  description: 'Chat with AI'
 })
 export class ChatCommand extends Command {
   public override registerApplicationCommands(registry: ApplicationCommandRegistry) {
@@ -70,7 +70,7 @@ export class ChatCommand extends Command {
 
       completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
 
-      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages);
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4-turbo');
 
       const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
 
@@ -142,7 +142,7 @@ export class ChatCommand extends Command {
 
       completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
 
-      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages);
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4-turbo');
 
       const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
 

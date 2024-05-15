@@ -1,12 +1,13 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
 import { ChatInputCommandInteraction, Guild, GuildMember, Message, TextBasedChannel, User } from 'discord.js';
-import { ChatCompletionRequestMessage } from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 import { aiChatMessageModel, clydeChannelModel } from '../../models';
 import { openAIService, selfbotService } from '../../services';
 import { createSendTypingInterval, generateErrorMessage, splitString } from '../../common/utils';
 import { AI_CHAT_SYSTEM_MESSAGE, CLYDE_BOT_CHANNEL } from '../../config';
+import { AiChatMessageContent } from '../../common/interfaces/utils';
 
 @ApplyOptions<Command.Options>({
   name: 'chat',
@@ -39,12 +40,25 @@ export class ChatCommand extends Command {
 
     try {
       const chatContent = await args.rest('string');
+      const attachmentUrls = await this.extractAttachmentsFromMessage(message);
+      const referenceContentList = await this.extractReferenceFromMessage(message);
+
+      let completionContent: AiChatMessageContent;
+      if (attachmentUrls.length) {
+        completionContent = [];
+        completionContent.push({ type: 'text', text: chatContent });
+        for (let i = 0; i < attachmentUrls.length; i++) {
+          completionContent.push({ type: 'image_url', image_url: { url: attachmentUrls[i] } });
+        }
+      } else {
+        completionContent = chatContent;
+      }
 
       const oldChatMessages = await aiChatMessageModel.find(
         { user: message.author.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
       ).exec();
 
-      const completionRequestMessages: ChatCompletionRequestMessage[] = [];
+      const completionRequestMessages: ChatCompletionMessageParam[] = [];
 
       const systemMessageContent = this.createSystemMessage({
         guild: message.guild,
@@ -65,12 +79,23 @@ export class ChatCommand extends Command {
       const userChatMessage = new aiChatMessageModel({
         user: message.author.id,
         role: 'user',
-        content: chatContent
+        content: completionContent
       });
 
       completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
 
-      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4-turbo');
+      let referenceChatMessage;
+
+      if (referenceContentList.length) {
+        referenceChatMessage = new aiChatMessageModel({
+          user: message.author.id,
+          role: 'system',
+          content: `The user is referring to this in particular:\n${referenceContentList.join('\n')}`
+        });
+        completionRequestMessages.push({ role: <any>referenceChatMessage.role, content: referenceChatMessage.content });
+      }
+
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4o');
 
       const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
 
@@ -99,6 +124,9 @@ export class ChatCommand extends Command {
       });
 
       await userChatMessage.save();
+      if (referenceChatMessage) {
+        await referenceChatMessage.save();
+      }
       await repliedChatMessage.save();
     } catch (e) {
       throw e;
@@ -116,7 +144,7 @@ export class ChatCommand extends Command {
         { user: interaction.user.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
       ).exec();
 
-      const completionRequestMessages: ChatCompletionRequestMessage[] = [];
+      const completionRequestMessages: ChatCompletionMessageParam[] = [];
 
       const systemMessageContent = this.createSystemMessage({
         guild: interaction.guild,
@@ -142,7 +170,7 @@ export class ChatCommand extends Command {
 
       completionRequestMessages.push({ role: <any>userChatMessage.role, content: userChatMessage.content });
 
-      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4-turbo');
+      const chatResponse = await openAIService.createChatCompletion(completionRequestMessages, 'gpt-4o');
 
       const messageContent = chatResponse.choices.find(r => r.finish_reason != null)?.message?.content;
 
@@ -175,6 +203,86 @@ export class ChatCommand extends Command {
     } catch (e) {
       throw e;
     }
+  }
+
+  private async extractAttachmentsFromMessage(message: Message) {
+    const urls: string[] = [];
+
+    if (message.attachments.size) {
+      message.attachments.forEach(attachment => {
+        urls.push(attachment.url);
+      });
+    }
+
+    if (message.embeds.length) {
+      message.embeds.forEach(embed => {
+        if (embed.image)
+          urls.push(embed.image.url);
+        if (embed.thumbnail)
+          urls.push(embed.thumbnail.url);
+      });
+    }
+
+    if (message.reference?.messageId) {
+      const refMessage = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMessage) {
+        if (refMessage.attachments.size) {
+          refMessage.attachments.forEach(attachment => {
+            urls.push(attachment.url);
+          });
+        }
+        else if (refMessage.embeds.length) {
+          refMessage.embeds.forEach(embed => {
+            if (embed.image)
+              urls.push(embed.image.url);
+            if (embed.thumbnail)
+              urls.push(embed.thumbnail.url);
+          });
+        }
+      }
+    }
+
+    return urls;
+  }
+
+  private async extractReferenceFromMessage(message: Message) {
+    const referenceContent: string[] = [];
+    if (message.embeds.length) {
+      message.embeds.forEach(embed => {
+        let content = '';
+        if (embed.title)
+          content += `\n${embed.title}`;
+        if (embed.description)
+          content += `\n${embed.description}`;
+        if (embed.url)
+          content += `\n${embed.url}`;
+        referenceContent.push(content);
+      });
+    }
+
+    if (message.reference?.messageId) {
+      const refMessage = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMessage) {
+        if (refMessage.content) {
+          let content = refMessage.content;
+          referenceContent.push(content);
+        }
+        if (refMessage.embeds.length) {
+          refMessage.embeds.forEach(embed => {
+            let content = '';
+            if (embed.title)
+              content += `\n${embed.title}`;
+            if (embed.description)
+              content += `\n${embed.description}`;
+            if (embed.url)
+              content += `\n${embed.url}`;
+            referenceContent.push(content);
+          });
+        }
+      }
+    }
+
+    return referenceContent;
   }
 
   private createSystemMessage(options: { guild: Guild | null, member: GuildMember | null, channel: TextBasedChannel, user: User }) {

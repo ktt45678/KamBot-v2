@@ -46,7 +46,7 @@
     "luxon": "3.3.0",
     "mongoose": "7.4.0",
     "msgpack-lite": "0.1.26",
-    "openai": "3.3.0",
+    "openai": "4.47.1",
     "rimraf": "5.0.1",
     "sharp": "0.32.4",
     "shoukaku": "4.0.1",

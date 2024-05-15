@@ -1,7 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
 import { AttachmentBuilder, ChatInputCommandInteraction, Message } from 'discord.js';
-import { ImagesResponse } from 'openai';
+import { ImagesResponse } from 'openai/resources/images';
 import path from 'path';
 import { AxiosError } from 'axios';
 

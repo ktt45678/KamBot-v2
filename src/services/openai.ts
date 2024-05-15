@@ -1,5 +1,6 @@
 import { AxiosHeaders } from 'axios';
-import { ChatCompletionRequestMessage, CreateChatCompletionResponse, ImagesResponse } from 'openai';
+import { ChatCompletionMessageParam, ChatCompletion } from 'openai/resources/chat/completions';
+import { ImagesResponse } from 'openai/resources/images';
 
 import { http } from '../modules/axios';
 import { ImageSDXLResponse } from '../common/interfaces/openai';
@@ -24,11 +25,11 @@ export class OpenAIService {
     this.headers.setAuthorization(`Bearer ${NAGA_AI_API_KEY}`);
   }
 
-  async createChatCompletion(messages: ChatCompletionRequestMessage[], model: string = 'gpt-3.5-turbo-1106') {
+  async createChatCompletion(messages: ChatCompletionMessageParam[], model: string = 'gpt-3.5-turbo-1106') {
     const headers = new AxiosHeaders(this.headers);
     headers.set('x-retry-status', '400, 408, 429, 500, 502, 503, 504');
 
-    const response = await http.post<CreateChatCompletionResponse>(`${this.openAIUrl}/chat/completions`, { model, messages },
+    const response = await http.post<ChatCompletion>(`${this.openAIUrl}/chat/completions`, { model, messages },
       { headers: headers });
     return response.data;
   }

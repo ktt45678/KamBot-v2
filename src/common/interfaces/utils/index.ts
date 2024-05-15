@@ -1,1 +1,2 @@
-export type * from './saucenao-search';
+export * from './ai-chat-message';
+export * from './saucenao-search';

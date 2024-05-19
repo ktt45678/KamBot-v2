@@ -55,7 +55,7 @@ export class ChatCommand extends Command {
       }
 
       const oldChatMessages = await aiChatMessageModel.find(
-        { user: message.author.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
+        { user: message.author.id, role: { $ne: 'system' } }, {}, { sort: { createdAt: -1 }, limit: 10, lean: true }
       ).exec();
 
       const completionRequestMessages: ChatCompletionMessageParam[] = [];

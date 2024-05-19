@@ -4,7 +4,7 @@
   "description": "Discord bot made by Kam",
   "main": "dist/main.js",
   "engines": {
-    "node": "18.17.0"
+    "node": "18.17.1"
   },
   "scripts": {
     "prebuild": "rimraf dist",

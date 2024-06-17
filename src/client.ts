@@ -77,7 +77,6 @@ export class KamBotClient extends SapphireClient {
     container.queueManager.forEach(async p => {
       await p.disconnect();
     });
-    container.playerManager.removeAllListeners();
   }
 }
 

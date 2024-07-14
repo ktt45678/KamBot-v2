@@ -2,12 +2,14 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { ApplicationCommandRegistry, Args, Command } from '@sapphire/framework';
 import { ChatInputCommandInteraction, Guild, GuildMember, Message, TextBasedChannel, User } from 'discord.js';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import util from 'node:util';
 
 import { aiChatMessageModel, clydeChannelModel } from '../../models';
 import { openAIService, selfbotService } from '../../services';
 import { createSendTypingInterval, generateErrorMessage, splitString } from '../../common/utils';
 import { AI_CHAT_SYSTEM_MESSAGE, CLYDE_BOT_CHANNEL } from '../../config';
 import { AiChatMessageContent } from '../../common/interfaces/utils';
+import { AxiosError } from 'axios';
 
 @ApplyOptions<Command.Options>({
   name: 'chat',
@@ -55,7 +57,7 @@ export class ChatCommand extends Command {
       }
 
       const oldChatMessages = await aiChatMessageModel.find(
-        { user: message.author.id, role: { $ne: 'system' } }, {}, { sort: { createdAt: -1 }, limit: 10, lean: true }
+        { user: message.author.id, role: 'assistant' }, {}, { sort: { createdAt: -1 }, limit: 1, lean: true }
       ).exec();
 
       const completionRequestMessages: ChatCompletionMessageParam[] = [];
@@ -73,7 +75,12 @@ export class ChatCommand extends Command {
       });
 
       for (let i = oldChatMessages.length - 1; i >= 0; i--) {
-        completionRequestMessages.push({ role: <any>oldChatMessages[i].role, content: oldChatMessages[i].content });
+        const oldChatMessage = oldChatMessages[i];
+        if (oldChatMessage.chatSummary) {
+          completionRequestMessages.push({ role: 'system', content: `Here is the summary of previous messages:\n${oldChatMessage.chatSummary}` });
+        } else {
+          completionRequestMessages.push({ role: <any>oldChatMessage.role, content: oldChatMessage.content });
+        }
       }
 
       const userChatMessage = new aiChatMessageModel({
@@ -117,10 +124,14 @@ export class ChatCommand extends Command {
         }
       }
 
+      const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
+      const chatSummary = await this.getChatSummary(chatSummaryRequestMessages);
+
       const repliedChatMessage = new aiChatMessageModel({
         user: message.author.id,
         role: 'assistant',
-        content: messageContent
+        content: messageContent,
+        chatSummary: chatSummary
       });
 
       await userChatMessage.save();
@@ -129,7 +140,14 @@ export class ChatCommand extends Command {
       }
       await repliedChatMessage.save();
     } catch (e) {
-      throw e;
+      if (e instanceof AxiosError && e.response) {
+        const errorMessageContent = e.response.data.detail || e.response.data.error?.message || util.inspect(e.response.data) || 'Unspecified error message';
+        const errorEmbedMessage = generateErrorMessage(errorMessageContent.substring(0, 1000), 'API Error ' + (e.response.status || 'unknwon'));
+        return message.channel.send({ embeds: [errorEmbedMessage] });
+      } else {
+        console.log(e);
+        throw e;
+      }
     } finally {
       clearInterval(sendTypingInterval);
     }
@@ -141,7 +159,7 @@ export class ChatCommand extends Command {
       await interaction.deferReply();
 
       const oldChatMessages = await aiChatMessageModel.find(
-        { user: interaction.user.id }, {}, { sort: { createdAt: -1 }, limit: 50, lean: true }
+        { user: interaction.user.id, role: 'assistant' }, {}, { sort: { createdAt: -1 }, limit: 1, lean: true }
       ).exec();
 
       const completionRequestMessages: ChatCompletionMessageParam[] = [];
@@ -159,7 +177,12 @@ export class ChatCommand extends Command {
       });
 
       for (let i = oldChatMessages.length - 1; i >= 0; i--) {
-        completionRequestMessages.push({ role: <any>oldChatMessages[i].role, content: oldChatMessages[i].content });
+        const oldChatMessage = oldChatMessages[i];
+        if (oldChatMessage.chatSummary) {
+          completionRequestMessages.push({ role: 'system', content: `Here is the summary of previous messages:\n${oldChatMessage.chatSummary}` });
+        } else {
+          completionRequestMessages.push({ role: <any>oldChatMessage.role, content: oldChatMessage.content });
+        }
       }
 
       const userChatMessage = new aiChatMessageModel({
@@ -192,17 +215,46 @@ export class ChatCommand extends Command {
         }
       }
 
+      const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
+      const chatSummary = await this.getChatSummary(chatSummaryRequestMessages);
+
       const repliedChatMessage = new aiChatMessageModel({
         user: interaction.user.id,
         role: 'assistant',
-        content: messageContent
+        content: messageContent,
+        chatSummary: chatSummary
       });
 
       await userChatMessage.save();
       await repliedChatMessage.save();
     } catch (e) {
-      throw e;
+      if (e instanceof AxiosError && e.response) {
+        const errorMessageContent = e.response.data.detail || e.response.data.error?.message || util.inspect(e.response.data) || 'Unspecified error message';
+        const errorEmbedMessage = generateErrorMessage(errorMessageContent.substring(0, 1000), 'API Error ' + (e.response.status || 'unknwon'));
+        return interaction.followUp({ embeds: [errorEmbedMessage] });
+      } else {
+        console.log(e);
+        throw e;
+      }
     }
+  }
+
+  private async getChatSummary(completionRequestMessages: ChatCompletionMessageParam[]) {
+    const summaryRequestMessages: ChatCompletionMessageParam[] = [];
+    let summaryRequestContent = 'Can you make a detailed summary of this conversation in 1000 characters max, in this, the assistant is you and the user is the person who is chatting\n';
+    completionRequestMessages.forEach(message => {
+      summaryRequestContent += `- ${message.role}: ${message.content}\n`;
+    });
+
+    summaryRequestMessages.push({ role: 'user', content: summaryRequestContent });
+
+    const vqd = await openAIService.getDuckDuckGoVQD();
+
+    const chatResponseSummary = await openAIService.createChatCompletionDDG(summaryRequestMessages, vqd);
+
+    const summaryContent = chatResponseSummary?.message || null;
+
+    return summaryContent;
   }
 
   private async extractAttachmentsFromMessage(message: Message) {

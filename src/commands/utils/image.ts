@@ -4,6 +4,7 @@ import { AttachmentBuilder, ChatInputCommandInteraction, Message } from 'discord
 import { ImagesResponse } from 'openai/resources/images';
 import path from 'path';
 import { AxiosError } from 'axios';
+import util from 'node:util';
 
 import { http } from '../../modules';
 import { openAIService } from '../../services/openai';
@@ -94,7 +95,8 @@ export class ImageCommand extends Command {
       return message.channel.send({ content: '> ' + prompt, files });
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
-        const errorEmbedMessage = generateErrorMessage(error.response.data.detail, 'Error ' + (error.response.status || 'unknwon'));
+        const errorMessageContent = error.response.data.detail || error.response.data.error?.message || util.inspect(error.response.data) || 'Unspecified error message';
+        const errorEmbedMessage = generateErrorMessage(errorMessageContent.substring(0, 1000), 'API Error ' + (error.response.status || 'unknwon'));
         return message.channel.send({ embeds: [errorEmbedMessage] });
       } else {
         throw error;
@@ -125,9 +127,8 @@ export class ImageCommand extends Command {
       return interaction.followUp({ content: responseContent, files, ephemeral: privateResponse });
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
-        console.log(error.response);
-        const errorMessageContent = error.response.data.detail || error.response.data.error?.message || 'Unspecified error message';
-        const errorEmbedMessage = generateErrorMessage(errorMessageContent, 'API Error ' + (error.response.status || 'unknwon'));
+        const errorMessageContent = error.response.data.detail || error.response.data.error?.message || util.inspect(error.response.data) || 'Unspecified error message';
+        const errorEmbedMessage = generateErrorMessage(errorMessageContent.substring(0, 1000), 'API Error ' + (error.response.status || 'unknwon'));
         return interaction.followUp({ embeds: [errorEmbedMessage] });
       } else {
         console.log(error);

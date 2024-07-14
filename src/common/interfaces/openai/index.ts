@@ -1,1 +1,2 @@
-export type * from './image-sdxl-response';
+export * from './duckduckgo-chat-response';
+export * from './image-sdxl-response';

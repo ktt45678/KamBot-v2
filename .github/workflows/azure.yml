@@ -22,7 +22,7 @@ jobs:
         run: |
           npm install --include=dev
           npm run build
-          npm prune --omit-dev
+          rm -rf node_modules
       - name: Zip artifact
         run: zip kambot-v2.zip ./* -r
       - name: Upload artifact for deployment job

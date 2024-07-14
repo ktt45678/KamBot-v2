@@ -20,6 +20,9 @@ export class AIChatMessage extends TimeStamps {
 
   @prop({ type: Schema.Types.Mixed, required: true })
   content!: AiChatMessageContent;
+
+  @prop({ type: String, default: null })
+  chatSummary!: string | null;
 }
 
 export const aiChatMessageModel = getModelForClass(AIChatMessage, { options: { customName: 'ai_chat_message' } });

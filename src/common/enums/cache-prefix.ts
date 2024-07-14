@@ -7,5 +7,6 @@ export enum CachePrefix {
   FGOPlayStoreVer = 'FGOAppStoreVer',
   FGOAppStoreVer = 'FGOAppStoreVer',
   FGOLatestGameData = 'FGOLatestGameData',
-  MyFGOAccountDecryptedKeys = 'MyFGOAccountDecryptedKeys'
+  MyFGOAccountDecryptedKeys = 'MyFGOAccountDecryptedKeys',
+  DuckDuckGoVQD = 'DuckDuckGoVQD'
 }

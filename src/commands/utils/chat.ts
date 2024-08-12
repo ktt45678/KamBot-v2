@@ -243,7 +243,22 @@ export class ChatCommand extends Command {
     const summaryRequestMessages: ChatCompletionMessageParam[] = [];
     let summaryRequestContent = 'Can you make a detailed summary of this conversation in 1000 characters max, in this, the assistant is you and the user is the person who is chatting\n';
     completionRequestMessages.forEach(message => {
-      summaryRequestContent += `- ${message.role}: ${message.content}\n`;
+      let messageContent: string = '';
+
+      if (typeof message.content === 'string') {
+        messageContent = message.content;
+      } else if (Array.isArray(message.content)) {
+        message.content.forEach(part => {
+          if (part.type === 'text')
+            messageContent += `${part.text}\n`;
+          else if (part.type === 'image_url')
+            messageContent += `Image url: ${part.image_url.url}\n`;
+        });
+      } else {
+        messageContent = JSON.stringify(message.content);
+      }
+
+      summaryRequestContent += `- ${message.role}: ${messageContent}\n`;
     });
 
     summaryRequestMessages.push({ role: 'user', content: summaryRequestContent });

@@ -37,7 +37,7 @@ export class OpenAIService {
     return response.data;
   }
 
-  async createChatCompletionDDG(messages: ChatCompletionMessageParam[], vqd: string, model: string = 'gpt-3.5-turbo-0125') {
+  async createChatCompletionDDG(messages: ChatCompletionMessageParam[], vqd: string, model: string = 'gpt-4o-mini') {
     const headers = new AxiosHeaders();
     headers.set('accept', 'text/event-stream');
     headers.set('accept-encoding', 'gzip, deflate, br');

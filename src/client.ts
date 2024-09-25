@@ -44,12 +44,29 @@ export class KamBotClient extends SapphireClient {
   public override async login(token?: string) {
     container.discordTogether = new DiscordTogether(container.client);
     this.initPlayer();
-    return super.login(token);
+    const login = await super.login(token);
+    this.initCustomMessageListerner();
+    return login;
   }
 
   public override async destroy() {
     await this.destroyPlayer();
     return super.destroy();
+  }
+
+  private initCustomMessageListerner() {
+    this.on('messageCreate', async (message) => {
+      const prefix = await fetchPrefix(message);
+      if (!message.content.startsWith(prefix))
+        return;
+      const messageCommand = message.content.split(' ');
+      const messageCommandName = messageCommand.shift();
+      if (messageCommandName === prefix + prefix) {
+        message.content = prefix + 'quoteadd' + (messageCommand.length ? ' ' + messageCommand.join(' ') : '');
+      } else if (messageCommandName === prefix + prefix + prefix) {
+        message.content = prefix + 'quoteshow' + (messageCommand.length ? ' ' + messageCommand.join(' ') : '');
+      }
+    });
   }
 
   private initPlayer() {

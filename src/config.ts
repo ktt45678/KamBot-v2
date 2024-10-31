@@ -1,6 +1,7 @@
 export const PORT = Number(process.env.PORT) || 3000;
 export const OWNER_ID = process.env.OWNER_ID;
 export const BOT_TOKEN = process.env.BOT_TOKEN;
+export const BOT_ALTER_INSTANCE_ID = Number(process.env.BOT_ALTER_INSTANCE_ID) || null;
 export const DATABASE_URL = process.env.DATABASE_URL || '';
 export const DATABASE_CACHE_URL = process.env.DATABASE_CACHE_URL || '';
 export const REDIS_URL = process.env.REDIS_URL || '';

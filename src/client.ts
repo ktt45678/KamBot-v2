@@ -5,7 +5,7 @@ import { Connectors, Shoukaku } from 'shoukaku';
 
 import { MusicQueueManager } from './modules/music-queue-manager';
 import { fetchPrefix } from './common/hooks';
-import { BOT_TOKEN, DEFAULT_PREFIX, LAVALINK_AUTH, LAVALINK_NAME, LAVALINK_URL } from './config';
+import { BOT_ALTER_INSTANCE_ID, BOT_TOKEN, DEFAULT_PREFIX, LAVALINK_AUTH, LAVALINK_NAME, LAVALINK_URL } from './config';
 
 export class KamBotClient extends SapphireClient {
   public constructor() {
@@ -39,6 +39,8 @@ export class KamBotClient extends SapphireClient {
         ]
       }
     });
+    container.isAlterInstance = BOT_ALTER_INSTANCE_ID != null;
+    container.alterInstanceId = BOT_ALTER_INSTANCE_ID;
   }
 
   public override async login(token?: string) {

@@ -44,7 +44,7 @@ export class PrefixCommand extends Command {
       return message.channel.send({ embeds: [embed] });
     }
     const prefix = await args.pick('string');
-    await guildService.setBotPrefix(message.guild.id, prefix);
+    await guildService.setBotPrefix(message.guild.id, prefix, this.container.alterInstanceId);
     const embed = this.generateSuccessMessage(prefix, message.guild);
     return message.channel.send({ embeds: [embed] });
   }
@@ -63,7 +63,7 @@ export class PrefixCommand extends Command {
       return interaction.reply({ embeds: [embed] });
     }
     await interaction.deferReply();
-    await guildService.setBotPrefix(interaction.guild.id, prefix);
+    await guildService.setBotPrefix(interaction.guild.id, prefix, this.container.alterInstanceId);
     const embed = this.generateSuccessMessage(prefix, interaction.guild);
     return interaction.followUp({ embeds: [embed] });
   }

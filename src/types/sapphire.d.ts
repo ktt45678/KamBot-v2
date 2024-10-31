@@ -30,5 +30,7 @@ declare module '@sapphire/pieces' {
     mongoDbCache: Cache<ReturnType<mongoDbStore>>;
     playerManager: Shoukaku;
     queueManager: MusicQueueManager;
+    isAlterInstance: boolean;
+    alterInstanceId: number | null;
   }
 }

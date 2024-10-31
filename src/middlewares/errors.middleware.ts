@@ -13,7 +13,7 @@ export const errorHandler = (e: HttpException, req: Request, res: Response, next
   }
   else {
     console.error(e);
-    res.status(500).send({ message: 'Lỗi xảy ra từ phía máy chủ' });
+    res.status(500).send({ message: 'Internal Server Error' });
   }
 }
 

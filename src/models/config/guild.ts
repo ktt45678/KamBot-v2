@@ -10,6 +10,9 @@ export class Guild extends TimeStamps {
 
   @prop({ required: true, default: DEFAULT_PREFIX })
   prefix!: string;
+
+  @prop()
+  instanceId!: string;
 }
 
 export const guildModel = getModelForClass(Guild, { options: { customName: 'config_guild' } });

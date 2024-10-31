@@ -149,6 +149,8 @@ export class MyFGOService {
   // }
 
   private initCronJobs() {
+    if (container.isAlterInstance)
+      return;
     const job = new CronJob('* * * * *', () => {
       this.runScheduledLogin();
     });

@@ -11,6 +11,7 @@ export interface FindGuildConfigOptions {
 
 export class GuildService {
   async findOrCreateGuildConfig(guildId: string, options: FindGuildConfigOptions = { cache: true }) {
+    options.instanceId && (guildId = guildId + '-' + options.instanceId);
     const cacheKey = `${CachePrefix.GuildConfig}:${guildId}`;
     if (options.cache) {
       const cfg = await container.memoryCache.get<FlattenMaps<Guild>>(cacheKey);
@@ -24,6 +25,7 @@ export class GuildService {
   }
 
   async setBotPrefix(guildId: string, prefix: string, instanceId?: number | null) {
+    instanceId && (guildId = guildId + '-' + instanceId);
     const cfg = await guildModel.findOneAndUpdate({ _id: guildId, instanceId }, { $set: { prefix } }, { upsert: true, new: true }).lean().exec();
     const cacheKey = `${CachePrefix.GuildConfig}:${guildId}`;
     await container.memoryCache.set(cacheKey, cfg, 3_600_000);

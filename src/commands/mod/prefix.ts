@@ -35,7 +35,7 @@ export class PrefixCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     if (!message.inGuild()) return;
     if (args.finished) {
-      const cfg = await guildService.findOrCreateGuildConfig(message.guild.id);
+      const cfg = await guildService.findOrCreateGuildConfig(message.guild.id, { cache: true, instanceId: this.container.alterInstanceId });
       const embed = this.generatePrefixMessage(message.guild, cfg);
       return message.channel.send({ embeds: [embed] });
     }
@@ -53,7 +53,7 @@ export class PrefixCommand extends Command {
     if (!interaction.guild) return;
     const prefix = interaction.options.getString('prefix');
     if (!prefix) {
-      const cfg = await guildService.findOrCreateGuildConfig(interaction.guild.id);
+      const cfg = await guildService.findOrCreateGuildConfig(interaction.guild.id, { cache: true, instanceId: this.container.alterInstanceId });
       const embed = this.generatePrefixMessage(interaction.guild, cfg);
       return interaction.reply({ embeds: [embed] });
     }

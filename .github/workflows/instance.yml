@@ -1,0 +1,70 @@
+name: 'Instance Deployment'
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+
+env:
+  INSTANCE_DEPLOYMENT_CONFIG: ${{ secrets.INSTANCE_DEPLOYMENT_CONFIG }}
+  INSTANCE_DEPLOYMENT_SSH_KEY: ${{ secrets.INSTANCE_DEPLOYMENT_SSH_KEY }}
+
+jobs:
+  build:
+    name: Build App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.4'
+          cache: 'npm'
+      - name: Install npm packages and build
+        run: |
+          npm install --include=dev
+          npm run build
+      - name: Zip artifact
+        run: zip kambot-v2.zip ./* -r
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: kambot-v2
+          path: kambot-v2.zip
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions: write-all
+    needs: build
+    steps:
+      - name: Read instance deployment config
+        run: |
+          if [ ! -x "$(command -v jq)" ]; then
+            echo "jq not found, installing..."
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+          echo '${{ env.INSTANCE_DEPLOYMENT_CONFIG }}' | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while read line; do echo "$line" >> $GITHUB_ENV; done
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: kambot-v2
+      - name: Deploy to Instance
+        env:
+            INSTANCE_IP: ${{ env.instanceIp }}
+            INSTANCE_USER: ${{ env.instanceUser }}
+            SSH_PRIVATE_KEY: ${{ env.INSTANCE_DEPLOYMENT_SSH_KEY }}
+            PUBLISH_FOLDER: ${{ env.instancePublishFolder }}
+            CONFIGURATION_FILE: ${{ env.instanceConfigurationFile }}
+            PACKAGE_FOLDER: kambot-v2
+        run: |
+          echo "$SSH_PRIVATE_KEY" > private_key
+          chmod 600 private_key
+          scp -o StrictHostKeyChecking=no -i private_key -r ./kambot-v2.zip $INSTANCE_USER@$INSTANCE_IP:$PUBLISH_FOLDER
+          ssh -o StrictHostKeyChecking=no -i private_key $INSTANCE_USER@$INSTANCE_IP "cd $PUBLISH_FOLDER && pm2 stop $CONFIGURATION_FILE"
+          ssh -o StrictHostKeyChecking=no -i private_key $INSTANCE_USER@$INSTANCE_IP "cd $PUBLISH_FOLDER && rm -rf $PACKAGE_FOLDER && unzip -q -d $PACKAGE_FOLDER kambot-v2.zip && rm kambot-v2.zip"
+          ssh -o StrictHostKeyChecking=no -i private_key $INSTANCE_USER@$INSTANCE_IP "cd $PUBLISH_FOLDER && cd $PACKAGE_FOLDER && npm install && npm rebuild"
+          ssh -o StrictHostKeyChecking=no -i private_key $INSTANCE_USER@$INSTANCE_IP "cd $PUBLISH_FOLDER && pm2 start $CONFIGURATION_FILE"
+          echo "Successfully deployed to selected Instance."

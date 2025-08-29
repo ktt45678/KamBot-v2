@@ -94,6 +94,7 @@ export class FGOCommand extends Subcommand {
   }
 
   public async messageRunSummon(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     let type: string = 'multi';
     const profile = await profileModel.findOne({ _id: message.author.id }, { rateUpServants: 1, rateUpCEs: 1 })
       .populate([{ path: 'rateUpServants' }, { path: 'rateUpCEs' }])

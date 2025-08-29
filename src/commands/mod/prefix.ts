@@ -35,11 +35,13 @@ export class PrefixCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     if (!message.inGuild()) return;
     if (args.finished) {
+      if (!message.channel.isSendable()) return;
       const cfg = await guildService.findOrCreateGuildConfig(message.guild.id, { cache: true, instanceId: this.container.alterInstanceId });
       const embed = this.generatePrefixMessage(message.guild, cfg);
       return message.channel.send({ embeds: [embed] });
     }
     if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild) && message.author.id !== OWNER_ID) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateErrorMessage(message.guild);
       return message.channel.send({ embeds: [embed] });
     }

@@ -45,10 +45,12 @@ export class ProfileCommand extends Command {
     if (!targetUser)
       targetUser = message.author;
     if (targetUser.bot) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('You can\'t use this command on a bot.', 'Unable to view profile!');
       return message.channel.send({ embeds: [embed] });
     }
     const profile = await userService.findProfile(targetUser.id);
+    if (!message.channel.isSendable()) return;
     const embed = this.generateInfo(targetUser, profile);
     return message.channel.send({ embeds: [embed] });
   }

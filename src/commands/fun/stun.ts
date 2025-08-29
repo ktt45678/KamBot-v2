@@ -19,16 +19,19 @@ import { generateErrorMessage } from '../../common/utils';
 export class StunCommand extends Command {
   public async messageRun(message: Message) {
     if (!message.mentions.users.size) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('Please mention a user', 'Failed to stun');
       return message.channel.send({ embeds: [embed] });
     }
     const target = message.mentions.users.first()!;
     if (target.bot) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('Bots are immune to this', 'Failed to stun');
       return message.channel.send({ embeds: [embed] });
     }
     const ttl = await funService.ttlStunCooldown(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateStunCooldown(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }
@@ -47,6 +50,7 @@ export class StunCommand extends Command {
       return message.react('1132359742770122943');
     }
     await funService.createStunCooldown(message.author.id);
+    if (!message.channel.isSendable()) return;
     const embed = this.generateStunResist(target);
     return message.channel.send({ embeds: [embed] });
   }

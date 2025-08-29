@@ -36,6 +36,7 @@ export class AvatarCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (!message.mentions.members?.size) {
       if (!args.finished) {
         if (!message.guild) {
@@ -54,6 +55,7 @@ export class AvatarCommand extends Command {
       return message.channel.send({ embeds: [embed] });
     }
     await Promise.all(message.mentions.members.map(member => {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateAvatar(member);
       return message.channel.send({ embeds: [embed] });
     }));

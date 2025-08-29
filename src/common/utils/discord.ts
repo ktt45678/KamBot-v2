@@ -1,4 +1,4 @@
-import { EmbedBuilder, GuildMemberManager, TextBasedChannel } from 'discord.js';
+import { EmbedBuilder, GuildMemberManager, SendableChannels } from 'discord.js';
 
 import { EmbedColors } from '../enums';
 
@@ -25,7 +25,7 @@ export function generateErrorMessage(message: string, title: string = 'An error 
     .setDescription(message);
 }
 
-export async function createSendTypingInterval(channel: TextBasedChannel): Promise<NodeJS.Timer> {
+export async function createSendTypingInterval(channel: SendableChannels): Promise<NodeJS.Timer> {
   await channel.sendTyping();
   return setInterval(() => {
     return channel.sendTyping();

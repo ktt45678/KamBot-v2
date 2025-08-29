@@ -37,6 +37,7 @@ export class ServerCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (!message.inGuild()) return;
     if (!args.finished) {
       const type = await args.pick('string').then(value => value.toLowerCase());

@@ -20,20 +20,24 @@ import { generateErrorMessage } from '../../common/utils';
 export class RemoveDebuffsCommand extends Command {
   public async messageRun(message: Message) {
     if (!message.mentions.users.size) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('Please mention a user', 'Failed to use');
       return message.channel.send({ embeds: [embed] });
     }
     const target = message.mentions.users.first()!;
     if (target.bot) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('You cannot use this on a bot', 'Failed to use');
       return message.channel.send({ embeds: [embed] });
     }
     if (target.id === message.author.id) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('You cannot use this on yourself', 'Failed to use');
       return message.channel.send({ embeds: [embed] });
     }
     const ttl = await funService.ttlRemoveDebuffsCooldown(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateRemoveDebuffsCD(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }

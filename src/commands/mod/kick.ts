@@ -30,6 +30,7 @@ export class KickCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (!message.inGuild()) return;
     if (!args.finished && !message.mentions.users.size) {
       const name = await args.rest('string');

@@ -17,6 +17,7 @@ export class RandomEffectCommand extends Command {
   public async messageRun(message: Message) {
     const ttl = await funService.ttlRandomEffectCD(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateRandomEffectCD(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }

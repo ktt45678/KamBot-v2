@@ -33,6 +33,7 @@ export class ChatCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (args.finished) {
       const errorEmbedMessage = generateErrorMessage('Please enter your message');
       return message.channel.send({ embeds: [errorEmbedMessage] });
@@ -124,8 +125,8 @@ export class ChatCommand extends Command {
         }
       }
 
-      const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
-      const chatSummary = await this.getChatSummary(chatSummaryRequestMessages);
+      //const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
+      const chatSummary = null; //await this.getChatSummary(chatSummaryRequestMessages);
 
       const repliedChatMessage = new aiChatMessageModel({
         user: message.author.id,
@@ -215,8 +216,8 @@ export class ChatCommand extends Command {
         }
       }
 
-      const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
-      const chatSummary = await this.getChatSummary(chatSummaryRequestMessages);
+      //const chatSummaryRequestMessages: ChatCompletionMessageParam[] = [...completionRequestMessages.slice(1), { role: 'assistant', content: messageContent }];
+      const chatSummary = null; //await this.getChatSummary(chatSummaryRequestMessages);
 
       const repliedChatMessage = new aiChatMessageModel({
         user: interaction.user.id,

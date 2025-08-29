@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Args, Command } from '@sapphire/framework';
-import { AnyThreadChannel, Collection, EmbedBuilder, Guild, Message, NonThreadGuildBasedChannel } from 'discord.js';
+import { AnyThreadChannel, Collection, EmbedBuilder, Guild, Message, NonThreadGuildBasedChannel, ReadonlyCollection } from 'discord.js';
 
 import { generateErrorMessage } from '../../common/utils';
 import { EmbedColors } from '../../common/enums';
@@ -17,6 +17,7 @@ import { EmbedColors } from '../../common/enums';
 })
 export class FetchChannelsCommand extends Command {
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     const guildId = await args.pick('string').catch(() => null);
     const channelType = await args.pick('string').catch(() => 'base');
     if (guildId === null) {
@@ -46,7 +47,7 @@ export class FetchChannelsCommand extends Command {
     return message.channel.send({ embeds: [embed] });
   }
 
-  private generateChannelList(channels: Collection<string, AnyThreadChannel<boolean>> | Collection<string, NonThreadGuildBasedChannel | null>, guild: Guild) {
+  private generateChannelList(channels: Collection<string, NonThreadGuildBasedChannel | null> | ReadonlyCollection<string, AnyThreadChannel>, guild: Guild) {
     const embed = new EmbedBuilder()
       .setColor(EmbedColors.Info)
       .setAuthor({ name: guild.name, iconURL: guild.iconURL({ forceStatic: true, size: 128 }) || undefined })

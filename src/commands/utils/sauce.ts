@@ -36,6 +36,7 @@ export class SauceCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     let url: string | null = null;
     let spoiler: boolean = false;
     if (!args.finished) {
@@ -86,7 +87,7 @@ export class SauceCommand extends Command {
           embedResults = this.generateInteractionEnded(embedResults);
           return sauceMessage.edit({ embeds: [embedResults], components: [] });
         }
-        const displayIndex = +stringSelectInteraction.values[0] ?? 1;
+        const displayIndex = +stringSelectInteraction.values[0];
         embedResults = this.generateSauceNaoResults(message.author, sauceNaoResponse.results, spoiler, displayIndex);
         await stringSelectInteraction.update({ embeds: [embedResults] });
       } while (true);
@@ -128,7 +129,7 @@ export class SauceCommand extends Command {
           embedResults = this.generateInteractionEnded(embedResults);
           return sauceMessage.edit({ embeds: [embedResults], components: [] });
         }
-        const displayIndex = +stringSelectInteraction.values[0] ?? 1;
+        const displayIndex = +stringSelectInteraction.values[0];
         embedResults = this.generateSauceNaoResults(interaction.user, sauceNaoResponse.results, spoiler, displayIndex);
         await stringSelectInteraction.update({ embeds: [embedResults] });
       } while (true);

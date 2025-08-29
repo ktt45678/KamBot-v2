@@ -22,11 +22,13 @@ export class DebuffResistanceCommand extends Command {
     const key = await args.pick('string').catch(() => null);
     if (key === 'status') {
       const allBuffs = await this.countDebuffResist(message.author.id);
+      if (!message.channel.isSendable()) return;
       const embed = this.generateDebuffResistInfo(message.author, allBuffs);
       return message.channel.send({ embeds: [embed] });
     }
     const ttl = await funService.ttlDebuffResistCooldown(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateDebuffResistCD(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }
@@ -35,6 +37,7 @@ export class DebuffResistanceCommand extends Command {
     } else {
       const target = message.mentions.users.first()!;
       if (target.bot) {
+        if (!message.channel.isSendable()) return;
         const embed = generateErrorMessage('You cannot use this on a bot', 'Failed to use');
         return message.channel.send({ embeds: [embed] });
       }

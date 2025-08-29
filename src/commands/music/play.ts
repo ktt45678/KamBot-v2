@@ -155,6 +155,7 @@ export class PlayCommand extends Command {
   private async handleSongSelection({ trackName, user, guildId, voiceChannelId, messageChannel, sendTrackNotFoundMessage,
     sendTrackAddedMessage, runPaginatedMessage }: HandleSongSelectionOptions) {
     const searchResult = await musicService.loadTracks(`ytsearch:${trackName}`);
+    console.log(searchResult);
     if (!searchResult || searchResult.loadType === 'empty') {
       const errorEmbedMessage = generateErrorMessage(`Could not find the results for **${trackName}**`);
       return sendTrackNotFoundMessage(errorEmbedMessage);
@@ -163,6 +164,7 @@ export class PlayCommand extends Command {
       const errorEmbedMessage = generateErrorMessage(`Error: **${searchResult.data.message}** (${searchResult.data.cause})`);
       return sendTrackNotFoundMessage(errorEmbedMessage);
     }
+    if (searchResult.loadType !== 'search') return;
     const paginatedMessage = this.generateSearchResult(user, searchResult.data);
     paginatedMessage.setEnableMessageCollector(true);
     paginatedMessage.setMessageCollectorOptions({

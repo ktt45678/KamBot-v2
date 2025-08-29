@@ -221,12 +221,12 @@ export class MusicQueue {
   }
 
   public sendNormalMessage(message: string) {
-    if (!this.channel) return;
+    if (!this.channel || !this.channel.isSendable()) return;
     return this.channel.send({ content: message });
   }
 
   public sendEmbedMessage(embed: EmbedBuilder) {
-    if (!this.channel) return;
+    if (!this.channel || !this.channel.isSendable()) return;
     return this.channel.send({ embeds: [embed] });
   }
 }

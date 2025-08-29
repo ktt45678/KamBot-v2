@@ -21,19 +21,23 @@ export class AddGifCommand extends Command {
     const kind = await args.pick('string').catch(() => null);
     const comment = await args.rest('string').catch(() => null);
     if (!url) {
+      if (!message.channel.isSendable()) return;
       const errorEmbedMessage = generateErrorMessage('Url is required');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
     if (!kind) {
+      if (!message.channel.isSendable()) return;
       const errorEmbedMessage = generateErrorMessage('Kind is required');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
     if (!['slap', 'godit'].includes(kind)) {
+      if (!message.channel.isSendable()) return;
       const errorEmbedMessage = generateErrorMessage('Kind must be "slap" or "godit"');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
     const gif = new gifImageModel({ url: url.href, kind, comment });
     await gif.save();
+    if (!message.channel.isSendable()) return;
     const embed = generateInfoMessage('Gif has been added');
     return message.channel.send({ embeds: [embed] });
   }

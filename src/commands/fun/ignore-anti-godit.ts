@@ -17,6 +17,7 @@ export class IgnoreAntiGoditCommand extends Command {
   public async messageRun(message: Message) {
     const ttl = await funService.ttlIgnoreGoditShieldCD(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateIgnoreAntiGoditCD(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }

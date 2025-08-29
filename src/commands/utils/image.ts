@@ -83,6 +83,7 @@ export class ImageCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (args.finished) {
       const errorEmbedMessage = generateErrorMessage('Please enter a text');
       return message.channel.send({ embeds: [errorEmbedMessage] });

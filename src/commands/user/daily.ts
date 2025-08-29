@@ -35,6 +35,7 @@ export class DailyCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     const authorDaily = await userService.findDaily(message.author.id);
     if (authorDaily?.claimedAt && DateTime.fromJSDate(authorDaily.claimedAt).toUTC().toISODate() === DateTime.now().toUTC().toISODate()) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateDailyClaimedMessage();
       return message.channel.send({ embeds: [embed] });
     }
@@ -52,10 +53,12 @@ export class DailyCommand extends Command {
     if (!targetUser)
       targetUser = message.author;
     if (targetUser.bot) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('You can\'t give your daily to a bot.', 'Unable to give daily!');
       return message.channel.send({ embeds: [embed] });
     }
     const daily = await userService.claimDailyReward(targetUser.id, message.author.id, authorDaily);
+    if (!message.channel.isSendable()) return;
     const embed = this.generateDailyMessage(daily, targetUser, message.author);
     return message.channel.send({ embeds: [embed] });
   }

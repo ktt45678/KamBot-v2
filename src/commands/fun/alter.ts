@@ -17,6 +17,7 @@ export class AlterCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     const ttl = await funService.ttlAlterCD(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateAlterCDEmbed(message.author, ttl);
       return message.channel.send({ embeds: [embed] });
     }
@@ -24,6 +25,7 @@ export class AlterCommand extends Command {
     if (message.mentions.users.size) {
       const firstMention = message.mentions.users.first()!;
       if (firstMention.bot) {
+        if (!message.channel.isSendable()) return;
         const embed = generateErrorMessage('You cannot use this on a bot', 'Failed to alter');
         return message.channel.send({ embeds: [embed] });
       }
@@ -32,14 +34,17 @@ export class AlterCommand extends Command {
       const findMemberName = await args.rest('string');
       const foundMember = await findMemberInGuild(message.guild.members, findMemberName);
       if (!foundMember) {
+        if (!message.channel.isSendable()) return;
         const embed = generateErrorMessage('Could not find the user you are looking for');
         return message.channel.send({ embeds: [embed] });
       } else if (foundMember.user.bot) {
+        if (!message.channel.isSendable()) return;
         const embed = generateErrorMessage('You cannot use this on a bot', 'Failed to alter');
         return message.channel.send({ embeds: [embed] });
       }
       targetId = foundMember.id;
     } else {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('Please mention a user');
       return message.channel.send({ embeds: [embed] });
     }

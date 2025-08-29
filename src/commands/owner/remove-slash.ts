@@ -15,6 +15,7 @@ export class RemoveSlashCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     const commandName = await args.pick('string').catch(() => null);
     if (!commandName) {
+      if (!message.channel.isSendable()) return;
       const errorEmbedMessage = generateErrorMessage('Command name is required');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
@@ -24,12 +25,14 @@ export class RemoveSlashCommand extends Command {
     const commands = await rest.get(Routes.applicationCommands(message.client.id!)) as ApplicationCommand[];
     const command = commands.find(cmd => cmd.name === commandName);
     if (!command) {
+      if (!message.channel.isSendable()) return;
       const errorEmbedMessage = generateErrorMessage('Command not found');
       return message.channel.send({ embeds: [errorEmbedMessage] });
     }
 
     await rest.delete(Routes.applicationCommand(message.client.id!, command.id));
 
+    if (!message.channel.isSendable()) return;
     const embed = generateInfoMessage('Slash command removed', 'Remove slash command');
     return message.channel.send({ embeds: [embed] });
   }

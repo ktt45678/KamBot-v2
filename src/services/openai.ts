@@ -47,7 +47,7 @@ export class OpenAIService {
     headers.set('sec-ch-ua', '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"');
     headers.set('user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
     headers.set('x-retry-status', '408, 429, 500, 502, 503, 504');
-    headers.set('x-vqd-4', vqd);
+    headers.set('x-vqd-hash-1', vqd);
 
     const response = await http.post(`${this.duckduckgoAIUrl}/chat`, { model, messages },
       { headers: headers, responseType: 'stream' });
@@ -56,6 +56,7 @@ export class OpenAIService {
       let completeMessage: DuckDuckGoChatResponse | null = null;
       response.data.on('data', (data: Buffer) => {
         const dataString = data.toString('utf-8');
+        console.log(dataString)
         const dataStringSplit = dataString.split('\n');
         for (let i = 0; i < dataStringSplit.length; i++) {
           const dataStringPart = dataStringSplit[i].replace('data: ', '');
@@ -95,7 +96,7 @@ export class OpenAIService {
 
     const response = await http.get('https://duckduckgo.com/duckchat/v1/status', { headers: headers, responseType: 'text' });
 
-    const vqdValue = response.headers['x-vqd-4'];
+    const vqdValue = response.headers['x-vqd-hash-1'];
     await container.memoryCache.set(CachePrefix.DuckDuckGoVQD, vqdValue, 1_800_000);
     return vqdValue;
   }

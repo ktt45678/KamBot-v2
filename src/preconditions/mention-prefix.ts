@@ -1,8 +1,8 @@
-import { AllFlowsPrecondition, MessageCommand, MessageCommandContext, Piece, PreconditionContext } from '@sapphire/framework';
+import { AllFlowsPrecondition, MessageCommand, MessageCommandContext, Precondition, PreconditionContext } from '@sapphire/framework';
 import { CommandInteraction, ContextMenuCommandInteraction, Message } from 'discord.js';
 
 export class MentionPrefixPrecondition extends AllFlowsPrecondition {
-  constructor(context: Piece.Context, options: AllFlowsPrecondition.Options) {
+  constructor(context: Precondition.LoaderContext, options: AllFlowsPrecondition.Options) {
     super(context, { ...options, position: 20 });
   }
 

@@ -29,6 +29,7 @@ export class HelpCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     if (args.finished) {
       const embed = this.generateCommandList(message.client.user);
       return message.channel.send({ embeds: [embed] });

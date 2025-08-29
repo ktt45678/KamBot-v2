@@ -36,10 +36,12 @@ export class GoditCommand extends Command {
   public async messageRun(message: Message, args: Args) {
     const ttl = await funService.ttlGoditStun(message.author.id);
     if (ttl > 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateStunInfo(ttl);
       return message.channel.send({ embeds: [embed] });
     }
     if (GODIT_RATE - Math.random() < 0) {
+      if (!message.channel.isSendable()) return;
       const embed = this.generateGoditFailedInfo();
       return message.channel.send({ embeds: [embed] });
     }
@@ -60,9 +62,11 @@ export class GoditCommand extends Command {
           const resistChance = resistRate - (Math.random() * 100);
           if (!isNaN(resistChance) && resistChance < 0 && !immune) {
             await funService.createGoditStun(message.author.id);
+            if (!message.channel.isSendable()) return;
             const embed = this.generateStunMessage(message.author, shielder);
             return message.channel.send({ embeds: [embed] });
           }
+          if (!message.channel.isSendable()) return;
           const embed = this.generateStunMessage(message.author, shielder, false);
           return message.channel.send({ embeds: [embed] });
         }
@@ -71,11 +75,10 @@ export class GoditCommand extends Command {
       if (message.inGuild()) {
         const blacklistIndex = this.checkBlacklist(message.mentions.members, GODIT_BLACKLIST);
         if (typeof blacklistIndex === 'number') {
+          await funService.createGoditStun(message.author.id, 300);
           const embed = this.generateGoditBlacklistStunMessage(message.author, GODIT_BLACKLIST_MESSAGES[blacklistIndex] || 'thích');
-          await Promise.all([
-            funService.createGoditStun(message.author.id, 300),
-            message.channel.send({ embeds: [embed] })
-          ]);
+          if (!message.channel.isSendable()) return;
+          await message.channel.send({ embeds: [embed] });
         }
         const alterData = await this.checkAlter(message.mentions.users);
         if (alterData) {
@@ -93,6 +96,7 @@ export class GoditCommand extends Command {
       }
     }
     const gif = await gifImageModel.findOneRandomGif(this.name);
+    if (!message.channel.isSendable()) return;
     const embed = this.generateGoditMessage(gif, author, target);
     return message.channel.send({ content: `${target} ${gif.comment}`, embeds: [embed] });
   }

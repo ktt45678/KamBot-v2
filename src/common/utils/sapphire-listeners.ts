@@ -18,6 +18,7 @@ export function handleChatInputOrContextMenuCommandDenied(error: UserError, payl
 
 export function handleMessageCommandDenied(error: UserError, payload: MessageCommandDeniedPayload) {
   if (Reflect.get(Object(payload.context), 'silent')) return;
+  if (!payload.message.channel.isSendable()) return;
 
   const errorEmbedMessage = generateErrorMessage(error.message, 'Failed to execute the command!');
   return payload.message.channel.send({ embeds: [errorEmbedMessage] });
@@ -48,6 +49,7 @@ export async function handleChatInputOrContextMenuCommandError(error: Error, pay
 }
 
 export async function handleMessageCommandError(error: Error, payload: MessageCommandErrorPayload | MessageSubcommandErrorPayload) {
+  if (!payload.message.channel.isSendable()) return;
   if (error instanceof DiscordEmbedError) {
     return payload.message.channel.send({ embeds: [error.toEmbed()] });
   }

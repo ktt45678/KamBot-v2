@@ -31,6 +31,7 @@ export class ListQuotesCommand extends Command {
 
   public async messageRun(message: Message, args: Args) {
     if (!message.inGuild()) {
+      if (!message.channel.isSendable()) return;
       const embed = generateErrorMessage('Please use this command in a server');
       return message.channel.send({ embeds: [embed] });
     }

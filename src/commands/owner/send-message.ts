@@ -16,6 +16,7 @@ import { generateErrorMessage, generateInfoMessage } from '../../common/utils';
 })
 export class SendMessageCommand extends Command {
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     const guildId = await args.pick('string').catch(() => null);
     if (guildId === null) {
       const errorEmbedMessage = generateErrorMessage('Invalid server id');

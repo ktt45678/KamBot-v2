@@ -30,6 +30,7 @@ export class SlapCommand extends Command {
   }
 
   public async messageRun(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     const content = await args.rest('string').catch(() => '');
     const gif = await gifImageModel.findOneRandomGif(this.name);
     const embed = this.generateSlapMessage(gif);

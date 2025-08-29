@@ -170,6 +170,7 @@ export class FGOCommand extends Subcommand {
   }
 
   public async messageRunRegister(message: Message, args: Args) {
+    if (!message.channel.isSendable()) return;
     const registrationInfoEmbed = this.generateRegistrationInfoEmbed(message.author);
     const registrationActions = this.generateRegistrationActions();
     const registrationInfoMessage = await message.channel.send({ embeds: [registrationInfoEmbed], components: [registrationActions] });
@@ -210,6 +211,7 @@ export class FGOCommand extends Subcommand {
     // const loginResult = await myFGOService.topLogin('na', playerCert);
     // const embed = this.generateLoginSuccess(message.author, loginResult);
     // return message.channel.send({ embeds: [embed] });
+    if (!message.channel.isSendable()) return;
     return message.channel.send({ content: 'To be implemented, use slash command instead' });
   }
 
